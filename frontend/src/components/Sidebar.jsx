@@ -1,9 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 
 export default function Sidebar() {
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -11,83 +9,49 @@ export default function Sidebar() {
     navigate("/login");
   };
 
-  const go = (path) => {
-    navigate(path);
-    setIsOpen(false); // close drawer after navigating on mobile
-  };
-
   return (
     <>
-      {/* Mobile top bar with hamburger button */}
+      {/* Mobile top bar - just a Dashboard button, no drawer/menu */}
       <div className="md:hidden flex items-center justify-between bg-slate-900 p-4">
         <h1 className="text-xl font-bold text-white">ExamAce AI</h1>
         <button
-          onClick={() => setIsOpen(true)}
-          className="text-white text-2xl"
-          aria-label="Open menu"
+          onClick={() => navigate("/dashboard")}
+          className="text-white text-sm font-semibold px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700"
         >
-          ☰
+          🏠 Dashboard
         </button>
       </div>
 
-      {/* Overlay behind drawer on mobile */}
-      {isOpen && (
-        <div
-          onClick={() => setIsOpen(false)}
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-        />
-      )}
-
-      {/* Sidebar / Drawer */}
-      <div
-        className={`
-          fixed md:static top-0 left-0 h-full md:h-auto min-h-screen
-          w-64 bg-slate-900 p-6 z-50
-          transform transition-transform duration-300
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0
-        `}
-      >
-        {/* Close button, mobile only */}
-        <div className="md:hidden flex justify-end mb-4">
-          <button
-            onClick={() => setIsOpen(false)}
-            className="text-white text-2xl"
-            aria-label="Close menu"
-          >
-            ✕
-          </button>
-        </div>
-
-        <h1 className="hidden md:block text-3xl font-bold mb-10 text-white">
+      {/* Full Sidebar - desktop only */}
+      <div className="hidden md:block w-64 bg-slate-900 p-6 min-h-screen">
+        <h1 className="text-3xl font-bold mb-10 text-white">
           ExamAce AI
         </h1>
 
         <div className="space-y-4">
-
           <button
-            onClick={() => go("/dashboard")}
+            onClick={() => navigate("/dashboard")}
             className="w-full text-left p-3 rounded-xl hover:bg-slate-800 text-white"
           >
             🏠 Dashboard
           </button>
 
           <button
-            onClick={() => go("/planner")}
+            onClick={() => navigate("/planner")}
             className="w-full text-left p-3 rounded-xl hover:bg-slate-800 text-white"
           >
             📅 Study Planner
           </button>
 
           <button
-            onClick={() => go("/notes")}
+            onClick={() => navigate("/notes")}
             className="w-full text-left p-3 rounded-xl hover:bg-slate-800 text-white"
           >
             📝 Notes Generator
           </button>
 
           <button
-            onClick={() => go("/mcq-generator")}
+            onClick={() => navigate("/mcq-generator")}
             className="w-full text-left p-3 rounded-xl hover:bg-slate-800 text-white"
           >
             🧠 MCQ Generator
@@ -99,9 +63,7 @@ export default function Sidebar() {
           >
             🚪 Logout
           </button>
-
         </div>
-
       </div>
     </>
   );
