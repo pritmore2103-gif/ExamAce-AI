@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
 
-const API_URL = "http://localhost:8000";
+const API_URL = "https://examace-ai-cp3e.onrender.com";
 
 const MODES = [
   {
