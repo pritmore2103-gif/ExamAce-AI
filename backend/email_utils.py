@@ -1,24 +1,20 @@
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import requests
 
 
 # ============================================================
 # CONFIG (read from environment variables set on Render)
 # ============================================================
 
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp-relay.brevo.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_LOGIN = os.getenv("SMTP_LOGIN")
-SMTP_KEY = os.getenv("SMTP_KEY")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
-# This is the "From" address shown to the recipient.
-# Brevo lets you send from any verified sender - set this
-# to an email you verified in your Brevo dashboard.
-FROM_EMAIL = os.getenv("FROM_EMAIL", SMTP_LOGIN)
+# This must be an email address you've verified as a sender
+# in Brevo (Settings -> Senders & IP).
+FROM_EMAIL = os.getenv("FROM_EMAIL")
 FROM_NAME = "ExamAce AI"
+
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 # ============================================================
@@ -27,19 +23,16 @@ FROM_NAME = "ExamAce AI"
 
 def send_verification_email(to_email: str, token: str) -> bool:
     """
-    Sends a verification email containing a link the user
-    must click to confirm their account.
+    Sends a verification email via Brevo's HTTP API.
 
     Returns True if sent successfully, False otherwise.
     """
 
-    if not SMTP_LOGIN or not SMTP_KEY:
-        print("⚠️ SMTP credentials are not configured.")
+    if not BREVO_API_KEY or not FROM_EMAIL:
+        print("⚠️ Brevo API key or FROM_EMAIL is not configured.")
         return False
 
     verification_link = f"{FRONTEND_URL}/verify?token={token}"
-
-    subject = "Verify your ExamAce AI account"
 
     html_body = f"""
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
@@ -61,21 +54,38 @@ def send_verification_email(to_email: str, token: str) -> bool:
     </div>
     """
 
-    message = MIMEMultipart("alternative")
-    message["Subject"] = subject
-    message["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
-    message["To"] = to_email
+    payload = {
+        "sender": {
+            "name": FROM_NAME,
+            "email": FROM_EMAIL,
+        },
+        "to": [
+            {"email": to_email}
+        ],
+        "subject": "Verify your ExamAce AI account",
+        "htmlContent": html_body,
+    }
 
-    message.attach(MIMEText(html_body, "html"))
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+    }
 
     try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_LOGIN, SMTP_KEY)
-            server.sendmail(FROM_EMAIL, to_email, message.as_string())
+        response = requests.post(
+            BREVO_API_URL,
+            json=payload,
+            headers=headers,
+            timeout=10,
+        )
 
-        print(f"✅ Verification email sent to {to_email}")
-        return True
+        if response.status_code in (200, 201):
+            print(f"✅ Verification email sent to {to_email}")
+            return True
+
+        print(f"❌ Brevo API error ({response.status_code}): {response.text}")
+        return False
 
     except Exception as error:
         print(f"❌ Failed to send verification email: {error}")
