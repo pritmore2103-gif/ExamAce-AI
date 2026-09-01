@@ -597,4 +597,1018 @@ def save_plan(
     # Extract daily plan
     # --------------------------------------------------------
 
-    daily_plan =
+    daily_plan = data.plan_data.get(
+        "daily_plan",
+        []
+    )
+
+
+    # --------------------------------------------------------
+    # Create individual tasks
+    # --------------------------------------------------------
+
+    for day_data in daily_plan:
+
+        day_number = day_data.get(
+            "day"
+        )
+
+        day_date = day_data.get(
+            "date"
+        )
+
+        day_tasks = day_data.get(
+            "tasks",
+            []
+        )
+
+        for task in day_tasks:
+
+            try:
+
+                task_hours = float(
+                    task.get(
+                        "hours",
+                        0
+                    )
+                )
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                task_hours = 0
+
+
+            new_task = StudyTask(
+
+                plan_id=new_plan.id,
+
+                user_id=current_user.id,
+
+                day=day_number,
+
+                date=day_date,
+
+                subject=task.get(
+                    "subject",
+                    ""
+                ),
+
+                topic=task.get(
+                    "topic",
+                    ""
+                ),
+
+                activity=task.get(
+                    "activity",
+                    ""
+                ),
+
+                hours=task_hours,
+
+                completed=0,
+
+            )
+
+            db.add(new_task)
+
+    db.commit()
+
+
+    return {
+
+        "message":
+            "Study plan saved successfully",
+
+        "plan_id":
+            new_plan.id
+
+    }
+
+
+# ============================================================
+# GET SAVED PLAN
+# ============================================================
+
+@app.get("/my-plan")
+def get_my_plan(
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        get_current_user
+    )
+
+):
+
+    plan = (
+
+        db.query(StudyPlan)
+
+        .filter(
+
+            StudyPlan.user_id ==
+            current_user.id
+
+        )
+
+        .order_by(
+
+            StudyPlan.id.desc()
+
+        )
+
+        .first()
+
+    )
+
+
+    if not plan:
+
+        return {
+
+            "plan": None
+
+        }
+
+
+    # --------------------------------------------------------
+    # Get tasks
+    # --------------------------------------------------------
+
+    tasks = (
+
+        db.query(StudyTask)
+
+        .filter(
+
+            StudyTask.plan_id ==
+            plan.id
+
+        )
+
+        .order_by(
+
+            StudyTask.day,
+
+            StudyTask.id
+
+        )
+
+        .all()
+
+    )
+
+
+    # --------------------------------------------------------
+    # Convert tasks into daily structure
+    # --------------------------------------------------------
+
+    daily_plan = {}
+
+
+    for task in tasks:
+
+        if task.day not in daily_plan:
+
+            daily_plan[task.day] = {
+
+                "day":
+                    task.day,
+
+                "date":
+                    task.date,
+
+                "tasks":
+                    []
+
+            }
+
+
+        daily_plan[
+            task.day
+        ][
+            "tasks"
+        ].append({
+
+            "id":
+                task.id,
+
+            "subject":
+                task.subject,
+
+            "topic":
+                task.topic,
+
+            "activity":
+                task.activity,
+
+            "hours":
+                task.hours,
+
+            "completed":
+                bool(
+                    task.completed
+                )
+
+        })
+
+
+    # --------------------------------------------------------
+    # Load original plan data
+    # --------------------------------------------------------
+
+    try:
+
+        saved_plan = json.loads(
+            plan.plan_data
+        )
+
+    except (
+        TypeError,
+        json.JSONDecodeError
+    ):
+
+        saved_plan = {}
+
+
+    saved_plan[
+        "daily_plan"
+    ] = list(
+        daily_plan.values()
+    )
+
+
+    return {
+
+        "plan_id":
+            plan.id,
+
+        "exam":
+            plan.exam,
+
+        "today":
+            plan.today,
+
+        "exam_date":
+            plan.exam_date,
+
+        "days_remaining":
+            plan.days_remaining,
+
+        "hours_per_day":
+            plan.hours_per_day,
+
+        "mode":
+            plan.mode,
+
+        "plan":
+            saved_plan
+
+    }
+
+
+# ============================================================
+# ADD MANUAL TASK
+# ============================================================
+
+@app.post("/study-task")
+def add_manual_task(
+
+    data: ManualTaskRequest,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        get_current_user
+    )
+
+):
+
+    plan = (
+
+        db.query(StudyPlan)
+
+        .filter(
+
+            StudyPlan.user_id ==
+            current_user.id
+
+        )
+
+        .order_by(
+            StudyPlan.id.desc()
+        )
+
+        .first()
+
+    )
+
+
+    if not plan:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="No study plan found."
+
+        )
+
+
+    new_task = StudyTask(
+
+        plan_id=plan.id,
+
+        user_id=current_user.id,
+
+        day=0,
+
+        date=data.date,
+
+        subject=data.subject,
+
+        topic=data.text,
+
+        activity="Manual task",
+
+        hours=data.hours,
+
+        completed=0
+
+    )
+
+
+    db.add(new_task)
+
+    db.commit()
+
+    db.refresh(new_task)
+
+
+    return {
+
+        "message":
+            "Task added successfully",
+
+        "task": {
+
+            "id":
+                new_task.id,
+
+            "subject":
+                new_task.subject,
+
+            "topic":
+                new_task.topic,
+
+            "activity":
+                new_task.activity,
+
+            "date":
+                new_task.date,
+
+            "hours":
+                new_task.hours,
+
+            "completed":
+                False
+
+        }
+
+    }
+
+
+# ============================================================
+# COMPLETE / UNCOMPLETE STUDY TASK
+# ============================================================
+
+@app.patch(
+    "/study-task/{task_id}"
+)
+def update_study_task(
+
+    task_id: int,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        get_current_user
+    )
+
+):
+
+    task = (
+
+        db.query(StudyTask)
+
+        .filter(
+
+            StudyTask.id ==
+            task_id,
+
+            StudyTask.user_id ==
+            current_user.id
+
+        )
+
+        .first()
+
+    )
+
+
+    if not task:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Task not found"
+
+        )
+
+
+    task.completed = (
+
+        0
+
+        if task.completed
+
+        else 1
+
+    )
+
+
+    db.commit()
+
+    db.refresh(task)
+
+
+    return {
+
+        "message":
+            "Task updated",
+
+        "task_id":
+            task.id,
+
+        "completed":
+            bool(
+                task.completed
+            )
+
+    }
+
+
+# ============================================================
+# DELETE STUDY TASK
+# ============================================================
+
+@app.delete(
+    "/study-task/{task_id}"
+)
+def delete_study_task(
+
+    task_id: int,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        get_current_user
+    )
+
+):
+
+    task = (
+
+        db.query(StudyTask)
+
+        .filter(
+
+            StudyTask.id ==
+            task_id,
+
+            StudyTask.user_id ==
+            current_user.id
+
+        )
+
+        .first()
+
+    )
+
+
+    if not task:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Task not found"
+
+        )
+
+
+    db.delete(task)
+
+    db.commit()
+
+
+    return {
+
+        "message":
+            "Task deleted successfully"
+
+    }
+
+
+# ============================================================
+# STUDY PLAN PROGRESS
+# ============================================================
+
+@app.get("/study-progress")
+def study_progress(
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        get_current_user
+    )
+
+):
+
+    tasks = (
+
+        db.query(StudyTask)
+
+        .filter(
+
+            StudyTask.user_id ==
+            current_user.id
+
+        )
+
+        .all()
+
+    )
+
+
+    total_tasks = len(tasks)
+
+    completed_tasks = sum(
+
+        1
+
+        for task in tasks
+
+        if task.completed
+
+    )
+
+
+    total_hours = sum(
+
+        task.hours or 0
+
+        for task in tasks
+
+    )
+
+
+    completed_hours = sum(
+
+        task.hours or 0
+
+        for task in tasks
+
+        if task.completed
+
+    )
+
+
+    progress = (
+
+        round(
+            completed_tasks /
+            total_tasks *
+            100
+        )
+
+        if total_tasks
+
+        else 0
+
+    )
+
+
+    hour_progress = (
+
+        round(
+            completed_hours /
+            total_hours *
+            100
+        )
+
+        if total_hours
+
+        else 0
+
+    )
+
+
+    return {
+
+        "total_tasks":
+            total_tasks,
+
+        "completed_tasks":
+            completed_tasks,
+
+        "remaining_tasks":
+            total_tasks -
+            completed_tasks,
+
+        "total_hours":
+            total_hours,
+
+        "completed_hours":
+            completed_hours,
+
+        "remaining_hours":
+            total_hours -
+            completed_hours,
+
+        "task_progress":
+            progress,
+
+        "hour_progress":
+            hour_progress
+
+    }
+
+
+# ============================================================
+# DELETE ENTIRE STUDY PLAN
+# ============================================================
+
+@app.delete("/my-plan")
+def delete_my_plan(
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        get_current_user
+    )
+
+):
+
+    plans = (
+
+        db.query(StudyPlan)
+
+        .filter(
+
+            StudyPlan.user_id ==
+            current_user.id
+
+        )
+
+        .all()
+
+    )
+
+
+    for plan in plans:
+
+        db.query(StudyTask).filter(
+
+            StudyTask.plan_id ==
+            plan.id
+
+        ).delete(
+
+            synchronize_session=False
+
+        )
+
+        db.delete(plan)
+
+
+    db.commit()
+
+
+    return {
+
+        "message":
+            "Study plan deleted"
+
+    }
+
+
+# ============================================================
+# QUIZ
+# ============================================================
+
+@app.post("/generate-quiz")
+def generate_quiz(
+    data: MCQRequest
+):
+
+    questions = []
+
+
+    for i in range(
+        data.count
+    ):
+
+        questions.append({
+
+            "question":
+                f"{data.topic} Question {i + 1}",
+
+            "options": [
+
+                "Option A",
+
+                "Option B",
+
+                "Option C",
+
+                "Option D"
+
+            ],
+
+            "answer":
+                random.choice(
+                    [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                    ]
+                )
+
+        })
+
+
+    return {
+
+        "questions":
+            questions
+
+    }
+
+
+# ============================================================
+# AI NOTES
+# ============================================================
+
+@app.post("/generate-notes")
+def notes_generator(
+
+    data: NotesRequest
+
+):
+
+    notes = generate_notes(
+
+        data.topic
+
+    )
+
+
+    return {
+
+        "content":
+            notes
+
+    }
+
+
+# ============================================================
+# REGISTER
+# ============================================================
+
+@app.post("/register")
+def register(
+
+    user: UserCreate,
+
+    db: Session = Depends(
+        get_db
+    )
+
+):
+
+    existing_user = (
+
+        db.query(User)
+
+        .filter(
+
+            User.email ==
+            user.email
+
+        )
+
+        .first()
+
+    )
+
+
+    if existing_user:
+
+        return {
+
+            "error":
+                "Email already exists"
+
+        }
+
+    # NEW: generate a random verification token
+    verification_token = secrets.token_urlsafe(32)
+
+    new_user = User(
+
+        name=user.name,
+
+        email=user.email,
+
+        password=hash_password(
+            user.password
+        ),
+
+        # NEW: unverified by default, store the token
+        is_verified=False,
+
+        verification_token=verification_token,
+
+    )
+
+
+    db.add(new_user)
+
+    db.commit()
+
+    db.refresh(new_user)
+
+    # NEW: send the verification email
+    email_sent = send_verification_email(
+        new_user.email,
+        verification_token
+    )
+
+    return {
+
+        "message":
+            "User created. Please check your email to verify your account."
+            if email_sent
+            else "User created, but the verification email could not be sent. Please contact support.",
+
+        "user_id":
+            new_user.id
+
+    }
+
+
+# ============================================================
+# VERIFY EMAIL
+# ============================================================
+
+@app.get("/verify-email")
+def verify_email(
+
+    token: str,
+
+    db: Session = Depends(get_db)
+
+):
+
+    user = (
+
+        db.query(User)
+
+        .filter(
+
+            User.verification_token ==
+            token
+
+        )
+
+        .first()
+
+    )
+
+    if not user:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail="Invalid or expired verification link."
+
+        )
+
+    user.is_verified = True
+
+    user.verification_token = None
+
+    db.commit()
+
+    return {
+
+        "message":
+            "Email verified successfully! You can now log in."
+
+    }
+
+
+# ============================================================
+# LOGIN
+# ============================================================
+
+@app.post("/login")
+def login(
+
+    user: UserLogin,
+
+    db: Session = Depends(
+        get_db
+    )
+
+):
+
+    db_user = (
+
+        db.query(User)
+
+        .filter(
+
+            User.email ==
+            user.email
+
+        )
+
+        .first()
+
+    )
+
+
+    if not db_user:
+
+        return {
+
+            "error":
+                "Invalid credentials"
+
+        }
+
+
+    if not verify_password(
+
+        user.password,
+
+        db_user.password
+
+    ):
+
+        return {
+
+            "error":
+                "Invalid credentials"
+
+        }
+
+    # NEW: block login if email isn't verified yet
+    if not db_user.is_verified:
+
+        return {
+
+            "error":
+                "Please verify your email before logging in. Check your inbox for the verification link."
+
+        }
+
+
+    token = create_access_token({
+
+        "user_id":
+            db_user.id
+
+    })
+
+
+    return {
+
+        "access_token":
+            token,
+
+        "user_id":
+            db_user.id,
+
+        "name":
+            db_user.name
+
+    }
