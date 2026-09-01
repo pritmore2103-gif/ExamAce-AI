@@ -473,3 +473,19 @@ export async function getDashboard() {
 
   return response.json();
 }
+
+
+// ============================================================
+// VERIFY EMAIL
+// ============================================================
+
+export async function verifyEmail(token) {
+  const response = await fetch(
+    `${API_URL}/verify-email?token=${token}`,
+    {
+      method: "GET",
+    }
+  );
+
+  return response.json();
+}
