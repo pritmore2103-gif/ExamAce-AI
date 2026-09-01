@@ -8,6 +8,7 @@ from sqlalchemy import (
     Text,
     DateTime,
     ForeignKey,
+    Boolean,
 )
 
 from database import Base
@@ -41,6 +42,16 @@ class User(Base):
     password = Column(
         String,
         nullable=False
+    )
+
+    is_verified = Column(
+        Boolean,
+        default=False
+    )
+
+    verification_token = Column(
+        String,
+        nullable=True
     )
 
 
@@ -281,9 +292,4 @@ class SavedQuiz(Base):
 
     # --------------------------------------------------------
     # Created date
-    # --------------------------------------------------------
-
-    created_at = Column(
-        DateTime,
-        default=datetime.utcnow
-    )
+    #
