@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -9,7 +8,7 @@ import Notes from "./pages/Notes";
 import Chat from "./pages/Chat";
 import MCQGenerator from "./pages/MCQGenerator";
 import Quiz from "./pages/Quiz";
-
+import VerifyEmail from "./pages/VerifyEmail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -17,13 +16,10 @@ function App() {
     <BrowserRouter>
       <div className="min-h-screen bg-slate-950 text-white">
         <Routes>
-
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-
-
-
+          <Route path="/verify" element={<VerifyEmail />} />
           <Route
             path="/dashboard"
             element={
@@ -32,7 +28,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/quiz"
             element={
@@ -41,7 +36,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/planner"
             element={
@@ -50,7 +44,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/notes"
             element={
@@ -59,7 +52,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/chat"
             element={
@@ -68,7 +60,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/mcq-generator"
             element={
@@ -77,7 +68,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
         </Routes>
       </div>
     </BrowserRouter>
