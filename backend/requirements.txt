@@ -1,4 +1,5 @@
 email-validator
+requests
 google-genai
 annotated-doc==0.0.5
 annotated-types==0.8.0
