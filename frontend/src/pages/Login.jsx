@@ -4,12 +4,22 @@ import { loginUser } from "../services/api";
 
 export default function Login() {
   const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
     try {
+      setLoading(true);
+      setError("");
+
       const response = await loginUser({
         email,
         password,
@@ -20,37 +30,39 @@ export default function Login() {
           "token",
           response.access_token
         );
-
         localStorage.setItem(
           "user",
           JSON.stringify(response)
         );
-
         navigate("/dashboard");
       } else {
-        alert(response.error || "Login failed");
+        setError(response.error || "Login failed");
       }
-    } catch (error) {
-      console.error(error);
-      alert("Server error");
+    } catch (err) {
+      console.error(err);
+      setError("Server error. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
-
       <div className="bg-slate-900 p-8 rounded-2xl w-full max-w-md">
-
         <h1 className="text-3xl font-bold text-white text-center mb-6">
           ExamAce AI
         </h1>
-
         <p className="text-slate-400 text-center mb-8">
           Welcome Back
         </p>
 
-        <div className="space-y-4">
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-900/30 border border-red-700 text-red-300 text-sm">
+            {error}
+          </div>
+        )}
 
+        <div className="space-y-4">
           <input
             type="email"
             placeholder="Email"
@@ -58,7 +70,6 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
             className="w-full p-3 rounded-lg bg-slate-800 text-white outline-none"
           />
-
           <input
             type="password"
             placeholder="Password"
@@ -66,15 +77,14 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 rounded-lg bg-slate-800 text-white outline-none"
           />
-
           <button
             type="button"
             onClick={handleLogin}
-            className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 py-3 rounded-lg font-semibold"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
-
         </div>
 
         <Link
@@ -83,16 +93,13 @@ export default function Login() {
         >
           Don't have an account? Register
         </Link>
-
         <Link
           to="/"
           className="block text-center mt-2 text-slate-400"
         >
           Back to Home
         </Link>
-
       </div>
-
     </div>
   );
 }
