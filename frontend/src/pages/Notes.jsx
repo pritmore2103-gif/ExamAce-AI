@@ -322,7 +322,7 @@ Requirements:
       setActiveTab("generator");
 
       setSuccessMessage(
-        "✨ Notes generated successfully!"
+        "Notes generated successfully!"
       );
     } catch (err) {
       console.error(
@@ -403,7 +403,7 @@ Requirements:
       ]);
 
       setSuccessMessage(
-        "💾 Notes saved successfully!"
+        "Notes saved successfully!"
       );
     } catch (err) {
       console.error(
@@ -457,7 +457,7 @@ Requirements:
       );
 
       setSuccessMessage(
-        "📋 Notes copied to clipboard!"
+        "Notes copied to clipboard!"
       );
     } catch (err) {
       console.error(
@@ -710,7 +710,7 @@ Requirements:
 
   if (loadingSavedNotes) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
+      <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col md:flex-row">
 
         <Sidebar />
 
@@ -722,8 +722,8 @@ Requirements:
               📚
             </div>
 
-            <h2 className="text-2xl font-bold">
-              Loading Notes
+            <h2 className="text-2xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
+              Loading notes
             </h2>
 
             <p className="text-slate-400 mt-2">
@@ -743,7 +743,7 @@ Requirements:
   // ============================================================
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col md:flex-row">
 
       <Sidebar />
 
@@ -763,14 +763,14 @@ Requirements:
 
                 <div className="flex items-center gap-3">
 
-                  <div className="w-12 h-12 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-2xl">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-600/15 border border-indigo-600/30 flex items-center justify-center text-2xl">
                     📚
                   </div>
 
                   <div>
 
-                    <h1 className="text-3xl md:text-4xl font-bold">
-                      AI Notes Generator
+                    <h1 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
+                      AI notes generator
                     </h1>
 
                     <p className="text-slate-400 mt-1">
@@ -785,13 +785,13 @@ Requirements:
 
               <div className="hidden md:block">
 
-                <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                <div className="bg-[#151922] border border-slate-800 rounded-xl px-4 py-3">
 
                   <p className="text-xs text-slate-500">
                     SAVED NOTES
                   </p>
 
-                  <p className="text-xl font-bold text-blue-400">
+                  <p className="text-xl font-bold text-indigo-400">
                     {savedNotes.length}
                   </p>
 
@@ -808,7 +808,7 @@ Requirements:
           ================================================== */}
 
           {successMessage && (
-            <div className="mb-6 bg-emerald-900/30 border border-emerald-700/60 text-emerald-300 p-4 rounded-xl">
+            <div className="mb-6 bg-emerald-950/40 border border-emerald-800 text-emerald-300 p-4 rounded-xl">
 
               <div className="flex items-center gap-3">
 
@@ -830,14 +830,14 @@ Requirements:
           ================================================== */}
 
           {error && (
-            <div className="mb-6 bg-red-900/30 border border-red-700/60 text-red-300 p-4 rounded-xl">
+            <div className="mb-6 bg-rose-950/40 border border-rose-800 text-rose-300 p-4 rounded-xl">
 
               <div className="flex justify-between gap-4">
 
                 <div>
 
                   <p className="font-semibold">
-                    ⚠️ Something went wrong
+                    Something went wrong
                   </p>
 
                   <p className="mt-1 text-sm">
@@ -851,7 +851,7 @@ Requirements:
                   onClick={() =>
                     setError("")
                   }
-                  className="text-red-300 hover:text-white text-lg"
+                  className="text-rose-300 hover:text-white text-lg"
                 >
                   ✕
                 </button>
@@ -877,11 +877,11 @@ Requirements:
               className={`px-5 py-3 font-semibold border-b-2 transition ${
                 activeTab ===
                 "generator"
-                  ? "border-blue-500 text-blue-400"
+                  ? "border-indigo-500 text-indigo-400"
                   : "border-transparent text-slate-400 hover:text-white"
               }`}
             >
-              🧠 Generator
+              Generator
             </button>
 
             <button
@@ -894,15 +894,15 @@ Requirements:
               className={`px-5 py-3 font-semibold border-b-2 transition ${
                 activeTab ===
                 "saved"
-                  ? "border-blue-500 text-blue-400"
+                  ? "border-indigo-500 text-indigo-400"
                   : "border-transparent text-slate-400 hover:text-white"
               }`}
             >
-              💾 Saved Notes
+              Saved notes
 
               {savedNotes.length >
                 0 && (
-                <span className="ml-2 text-xs bg-slate-700 px-2 py-1 rounded-full">
+                <span className="ml-2 text-xs bg-slate-800 px-2 py-1 rounded-full">
                   {savedNotes.length}
                 </span>
               )}
@@ -923,12 +923,12 @@ Requirements:
                   INPUT CARD
               ================================================== */}
 
-              <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
+              <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
 
                 <div className="mb-7">
 
-                  <h2 className="text-xl md:text-2xl font-bold">
-                    🧠 Create New Notes
+                  <h2 className="text-xl md:text-2xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
+                    Create new notes
                   </h2>
 
                   <p className="text-sm text-slate-400 mt-1">
@@ -963,7 +963,7 @@ Requirements:
                       }
                     }}
                     placeholder="e.g. Current Electricity"
-                    className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition text-white placeholder:text-slate-500"
+                    className="w-full p-4 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition text-white placeholder:text-slate-500"
                   />
 
                   <div className="flex justify-between mt-2">
@@ -1003,8 +1003,8 @@ Requirements:
                           className={`p-3.5 rounded-xl border text-sm font-medium transition ${
                             subject ===
                             item
-                              ? "bg-blue-600 border-blue-500 shadow-lg shadow-blue-900/20"
-                              : "bg-slate-800 border-slate-700 hover:bg-slate-750 hover:border-slate-600"
+                              ? "bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-900/20"
+                              : "bg-[#0B0E14] border-slate-800 hover:border-slate-700"
                           }`}
                         >
                           {item}
@@ -1041,8 +1041,8 @@ Requirements:
                           className={`text-left p-4 rounded-xl border transition ${
                             difficulty ===
                             item.value
-                              ? "bg-blue-600/15 border-blue-500"
-                              : "bg-slate-800 border-slate-700 hover:border-slate-600"
+                              ? "bg-indigo-600/15 border-indigo-500"
+                              : "bg-[#0B0E14] border-slate-800 hover:border-slate-700"
                           }`}
                         >
 
@@ -1069,7 +1069,7 @@ Requirements:
                 <div className="mb-8">
 
                   <label className="block text-sm font-semibold text-slate-300 mb-3">
-                    Note Length
+                    Note length
                   </label>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1089,8 +1089,8 @@ Requirements:
                           className={`text-left p-4 rounded-xl border transition ${
                             noteLength ===
                             item.value
-                              ? "bg-purple-600/15 border-purple-500"
-                              : "bg-slate-800 border-slate-700 hover:border-slate-600"
+                              ? "bg-amber-500/15 border-amber-500"
+                              : "bg-[#0B0E14] border-slate-800 hover:border-slate-700"
                           }`}
                         >
 
@@ -1120,7 +1120,7 @@ Requirements:
                     generateNotes
                   }
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed py-4 rounded-xl font-bold text-lg transition shadow-lg shadow-blue-900/20"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed py-4 rounded-xl font-bold text-lg transition shadow-lg shadow-indigo-900/20"
                 >
 
                   {loading ? (
@@ -1134,7 +1134,7 @@ Requirements:
 
                     </span>
                   ) : (
-                    "✨ Generate AI Notes"
+                    "Generate AI notes"
                   )}
 
                 </button>
@@ -1146,7 +1146,7 @@ Requirements:
               ================================================== */}
 
               {generatedNotes && (
-                <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
+                <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
 
                   {/* HEADER */}
 
@@ -1154,25 +1154,25 @@ Requirements:
 
                     <div>
 
-                      <p className="text-sm text-blue-400 font-bold tracking-wider mb-2">
+                      <p className="text-sm text-indigo-400 font-bold tracking-wider mb-2">
                         GENERATED NOTES
                       </p>
 
-                      <h2 className="text-2xl md:text-3xl font-bold">
+                      <h2 className="text-2xl md:text-3xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
                         {generatedTitle}
                       </h2>
 
                       <div className="flex flex-wrap gap-2 mt-3">
 
-                        <span className="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300">
+                        <span className="text-xs px-3 py-1 rounded-full bg-[#0B0E14] border border-slate-800 text-slate-300">
                           {subject}
                         </span>
 
-                        <span className="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300">
+                        <span className="text-xs px-3 py-1 rounded-full bg-[#0B0E14] border border-slate-800 text-slate-300">
                           {difficulty}
                         </span>
 
-                        <span className="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300">
+                        <span className="text-xs px-3 py-1 rounded-full bg-[#0B0E14] border border-slate-800 text-slate-300">
                           {noteLength}
                         </span>
 
@@ -1187,9 +1187,9 @@ Requirements:
                         onClick={
                           copyNotes
                         }
-                        className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition"
+                        className="px-4 py-2.5 rounded-lg bg-[#0B0E14] hover:bg-slate-800 border border-slate-800 transition"
                       >
-                        📋 Copy
+                        Copy
                       </button>
 
                       <button
@@ -1197,9 +1197,9 @@ Requirements:
                         onClick={
                           printNotes
                         }
-                        className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition"
+                        className="px-4 py-2.5 rounded-lg bg-[#0B0E14] hover:bg-slate-800 border border-slate-800 transition"
                       >
-                        🖨️ Print
+                        Print
                       </button>
 
                       <button
@@ -1207,9 +1207,9 @@ Requirements:
                         onClick={
                           clearGeneratedNotes
                         }
-                        className="px-4 py-2.5 rounded-lg bg-red-600/15 hover:bg-red-600/25 border border-red-700/60 text-red-300 transition"
+                        className="px-4 py-2.5 rounded-lg bg-rose-950/40 hover:bg-rose-950/60 border border-rose-800 text-rose-300 transition"
                       >
-                        ✕ Clear
+                        Clear
                       </button>
 
                     </div>
@@ -1218,7 +1218,7 @@ Requirements:
 
                   {/* NOTES CONTENT */}
 
-                  <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 md:p-7">
+                  <div className="bg-[#0B0E14] border border-slate-800 rounded-xl p-5 md:p-7">
 
                     <div className="whitespace-pre-wrap text-slate-200 leading-8 text-[15px] md:text-base">
                       {generatedNotes}
@@ -1238,12 +1238,12 @@ Requirements:
                       disabled={
                         savingNote
                       }
-                      className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-400 px-6 py-3.5 rounded-xl font-semibold transition"
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 disabled:text-slate-500 px-6 py-3.5 rounded-xl font-semibold transition"
                     >
 
                       {savingNote
-                        ? "💾 Saving..."
-                        : "💾 Save Notes"}
+                        ? "Saving..."
+                        : "Save notes"}
 
                     </button>
 
@@ -1254,9 +1254,9 @@ Requirements:
                           "saved"
                         )
                       }
-                      className="px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold transition"
+                      className="px-6 py-3.5 rounded-xl bg-[#0B0E14] hover:bg-slate-800 border border-slate-800 font-semibold transition"
                     >
-                      View Saved Notes →
+                      View saved notes →
                     </button>
 
                   </div>
@@ -1272,7 +1272,7 @@ Requirements:
                 !loading && (
                   <section className="text-center py-14">
 
-                    <div className="w-20 h-20 mx-auto mb-5 rounded-3xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-5xl">
+                    <div className="w-20 h-20 mx-auto mb-5 rounded-3xl bg-indigo-600/10 border border-indigo-600/20 flex items-center justify-center text-5xl">
                       📖
                     </div>
 
@@ -1298,7 +1298,7 @@ Requirements:
 
           {activeTab ===
             "saved" && (
-            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
+            <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
 
               {/* HEADER */}
 
@@ -1306,8 +1306,8 @@ Requirements:
 
                 <div>
 
-                  <h2 className="text-2xl md:text-3xl font-bold">
-                    💾 Saved Notes
+                  <h2 className="text-2xl md:text-3xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
+                    Saved notes
                   </h2>
 
                   <p className="text-sm text-slate-400 mt-1">
@@ -1321,9 +1321,9 @@ Requirements:
                   onClick={
                     startNewNote
                   }
-                  className="w-fit bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-xl font-semibold transition"
+                  className="w-fit bg-indigo-600 hover:bg-indigo-700 px-5 py-3 rounded-xl font-semibold transition"
                 >
-                  ✨ New Notes
+                  New notes
                 </button>
 
               </div>
@@ -1347,7 +1347,7 @@ Requirements:
                       )
                     }
                     placeholder="Search your notes..."
-                    className="w-full p-4 pl-11 rounded-xl bg-slate-800 border border-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"
+                    className="w-full p-4 pl-11 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition"
                   />
 
                 </div>
@@ -1378,9 +1378,9 @@ Requirements:
                     onClick={
                       startNewNote
                     }
-                    className="mt-6 bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-xl font-semibold"
+                    className="mt-6 bg-indigo-600 hover:bg-indigo-700 px-5 py-3 rounded-xl font-semibold transition"
                   >
-                    Create Your First Notes
+                    Create your first notes
                   </button>
 
                 </div>
@@ -1425,14 +1425,14 @@ Requirements:
                             note
                           )
                         }
-                        className="text-left bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-blue-500/50 p-5 rounded-xl transition group"
+                        className="text-left bg-[#0B0E14] hover:bg-slate-900 border border-slate-800 hover:border-indigo-600/50 p-5 rounded-xl transition group"
                       >
 
                         <div className="flex items-start justify-between gap-4">
 
                           <div className="flex-1 min-w-0">
 
-                            <h3 className="font-bold text-lg text-white truncate group-hover:text-blue-400 transition">
+                            <h3 className="font-bold text-lg text-white truncate group-hover:text-indigo-400 transition">
                               {note.title ||
                                 "Untitled Note"}
                             </h3>
@@ -1451,10 +1451,10 @@ Requirements:
 
                         </div>
 
-                        <div className="mt-4 pt-3 border-t border-slate-700">
+                        <div className="mt-4 pt-3 border-t border-slate-800">
 
-                          <span className="text-xs text-blue-400 group-hover:text-blue-300">
-                            Open Notes →
+                          <span className="text-xs text-indigo-400 group-hover:text-indigo-300">
+                            Open notes →
                           </span>
 
                         </div>
