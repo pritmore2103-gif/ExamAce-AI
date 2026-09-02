@@ -115,8 +115,7 @@ export default function Privacy() {
             </h2>
 
             <p>
-              For privacy-related questions, contact us through the
-              ExamAce AI support page.
+              For privacy-related questions, mail us at examace.ai21@gmail.com 
             </p>
           </section>
 
