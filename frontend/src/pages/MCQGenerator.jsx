@@ -26,34 +26,47 @@ const DIFFICULTIES = [
   "Hard",
 ];
 
-
 // ============================================================
 // MATH RENDERER
 // ============================================================
 
 function MathText({ text, display = false }) {
-
-  if (!text) {
+  if (text === null || text === undefined) {
     return null;
   }
 
-  const value = String(text);
+  const value = String(text).trim();
+
+  if (!value) {
+    return null;
+  }
 
   const hasLatex =
     value.includes("$") ||
     value.includes("\\(") ||
+    value.includes("\\)") ||
     value.includes("\\[") ||
+    value.includes("\\]") ||
     value.includes("\\frac") ||
     value.includes("\\sqrt") ||
     value.includes("\\pi") ||
     value.includes("\\theta") ||
     value.includes("\\alpha") ||
     value.includes("\\beta") ||
+    value.includes("\\gamma") ||
     value.includes("\\sin") ||
     value.includes("\\cos") ||
     value.includes("\\tan") ||
-    value.includes("^");
+    value.includes("\\log") ||
+    value.includes("^") ||
+    value.includes("π") ||
+    value.includes("√") ||
+    value.includes("≤") ||
+    value.includes("≥") ||
+    value.includes("≠") ||
+    value.includes("∞");
 
+  // Normal text
   if (!hasLatex) {
     return (
       <span className="whitespace-pre-wrap">
@@ -64,6 +77,7 @@ function MathText({ text, display = false }) {
 
   let formatted = value;
 
+  // Convert common symbols to LaTeX
   formatted = formatted
     .replace(/√\s*\(([^)]+)\)/g, "\\sqrt{$1}")
     .replace(/√\s*([A-Za-z0-9]+)/g, "\\sqrt{$1}")
@@ -94,59 +108,72 @@ function MathText({ text, display = false }) {
     .replace(/∑/g, "\\sum")
     .replace(/∫/g, "\\int");
 
+  // ==========================================================
+  // FULL BLOCK LATEX
+  // ==========================================================
+
+  if (
+    formatted.startsWith("$$") &&
+    formatted.endsWith("$$")
+  ) {
+    return (
+      <div className="overflow-x-auto py-2">
+        <BlockMath>
+          {formatted.slice(2, -2)}
+        </BlockMath>
+      </div>
+    );
+  }
+
+  if (
+    formatted.startsWith("\\[") &&
+    formatted.endsWith("\\]")
+  ) {
+    return (
+      <div className="overflow-x-auto py-2">
+        <BlockMath>
+          {formatted.slice(2, -2)}
+        </BlockMath>
+      </div>
+    );
+  }
+
+  // ==========================================================
+  // PURE MATHEMATICAL EXPRESSION
+  // ==========================================================
+
   const looksLikePureMath =
-    display ||
-    /^[\s\dA-Za-z+\-*/=^().,√πθ∞≤≥≠∈∑∫\\{}[\]]+$/.test(
+    display &&
+    /^[\s\dA-Za-z+\-*/=^().,√πθ∞≤≥≠∈∑∫\\{}[\]|]+$/.test(
       value
     );
 
-  if (
-    value.startsWith("$$") &&
-    value.endsWith("$$")
-  ) {
-
-    return (
-      <BlockMath>
-        {value.slice(2, -2)}
-      </BlockMath>
-    );
-  }
-
-  if (
-    value.startsWith("\\[") &&
-    value.endsWith("\\]")
-  ) {
-
-    return (
-      <BlockMath>
-        {value.slice(2, -2)}
-      </BlockMath>
-    );
-  }
-
   if (looksLikePureMath) {
-
     return (
-      <BlockMath>
-        {formatted}
-      </BlockMath>
+      <div className="overflow-x-auto py-2">
+        <BlockMath>
+          {formatted}
+        </BlockMath>
+      </div>
     );
   }
+
+  // ==========================================================
+  // INLINE LATEX
+  // ==========================================================
 
   const parts = formatted.split(
-    /(\$[^$]+\$|\\\([^)]*\\\))/g
+    /(\$[^$]+\$|\\\([^)]*\\\))/
   );
 
   return (
-    <span className="leading-8">
-
+    <span className="leading-8 whitespace-pre-wrap">
       {parts.map((part, index) => {
-
+        // $ ... $
         if (
           part.startsWith("$") &&
           part.endsWith("$")
         ) {
-
           return (
             <InlineMath key={index}>
               {part.slice(1, -1)}
@@ -154,11 +181,11 @@ function MathText({ text, display = false }) {
           );
         }
 
+        // \( ... \)
         if (
           part.startsWith("\\(") &&
           part.endsWith("\\)")
         ) {
-
           return (
             <InlineMath key={index}>
               {part.slice(2, -2)}
@@ -171,20 +198,16 @@ function MathText({ text, display = false }) {
             {part}
           </span>
         );
-
       })}
-
     </span>
   );
 }
-
 
 // ============================================================
 // MAIN COMPONENT
 // ============================================================
 
 export default function MCQGenerator() {
-
   const [subject, setSubject] =
     useState("Physics");
 
@@ -200,7 +223,6 @@ export default function MCQGenerator() {
   const [count, setCount] =
     useState(5);
 
-
   const [questions, setQuestions] =
     useState([]);
 
@@ -213,31 +235,23 @@ export default function MCQGenerator() {
   const [submitted, setSubmitted] =
     useState(false);
 
-
   const [loading, setLoading] =
     useState(false);
 
   const [error, setError] =
     useState("");
 
-
   // ==========================================================
   // GENERATE MCQs
   // ==========================================================
 
   const handleGenerate = async () => {
-
     if (!topic.trim()) {
-
-      setError(
-        "Please enter a topic."
-      );
-
+      setError("Please enter a topic.");
       return;
     }
 
     try {
-
       setLoading(true);
       setError("");
 
@@ -246,181 +260,144 @@ export default function MCQGenerator() {
       setSelectedAnswers({});
       setSubmitted(false);
 
-      const data =
-        await generateMCQ(
-          topic,
-          difficulty,
-          count,
-          subject,
-          exam
-        );
+      const data = await generateMCQ(
+        topic.trim(),
+        difficulty,
+        count,
+        subject,
+        exam
+      );
 
       if (
-        !data.questions ||
-        !Array.isArray(data.questions)
+        !data ||
+        !Array.isArray(data.questions) ||
+        data.questions.length === 0
       ) {
-
         throw new Error(
           "Invalid MCQ response from server."
         );
       }
 
-      setQuestions(
-        data.questions
-      );
-
-    } catch (error) {
-
-      console.error(error);
+      setQuestions(data.questions);
+    } catch (err) {
+      console.error("MCQ generation error:", err);
 
       setError(
-        error?.message ||
-        "Failed to generate MCQs. Please try again."
+        err?.message ||
+          "Failed to generate MCQs. Please try again."
       );
-
     } finally {
-
       setLoading(false);
-
     }
   };
-
 
   // ==========================================================
   // SELECT ANSWER
   // ==========================================================
 
-  const handleSelectAnswer =
-    (option) => {
+  const handleSelectAnswer = (option) => {
+    if (submitted) return;
 
-      if (submitted) return;
-
-      setSelectedAnswers(
-        (prev) => ({
-          ...prev,
-          [currentQuestion]:
-            option,
-        })
-      );
-    };
-
+    setSelectedAnswers((prev) => ({
+      ...prev,
+      [currentQuestion]: option,
+    }));
+  };
 
   // ==========================================================
   // NEXT
   // ==========================================================
 
   const handleNext = () => {
-
     if (
-      currentQuestion 
-      questions.length - 1
+      currentQuestion < questions.length - 1
     ) {
-
       setCurrentQuestion(
         (prev) => prev + 1
       );
-
     }
   };
-
 
   // ==========================================================
   // PREVIOUS
   // ==========================================================
 
   const handlePrevious = () => {
-
     if (currentQuestion > 0) {
-
       setCurrentQuestion(
         (prev) => prev - 1
       );
-
     }
   };
-
 
   // ==========================================================
   // SUBMIT
   // ==========================================================
 
   const handleSubmit = () => {
-
     setSubmitted(true);
     setCurrentQuestion(0);
-
   };
-
 
   // ==========================================================
   // RESET
   // ==========================================================
 
   const handleNewQuiz = () => {
-
     setQuestions([]);
     setCurrentQuestion(0);
     setSelectedAnswers({});
     setSubmitted(false);
     setError("");
-
   };
-
 
   // ==========================================================
   // SCORE
   // ==========================================================
 
   const calculateScore = () => {
-
     return questions.reduce(
       (score, question, index) => {
-
         if (
           selectedAnswers[index] ===
           question.answer
         ) {
-
           return score + 1;
-
         }
 
         return score;
-
       },
       0
     );
   };
 
-
-  const score =
-    calculateScore();
-
+  const score = calculateScore();
 
   const percentage =
     questions.length > 0
       ? Math.round(
-          (score /
-            questions.length) *
-            100
+          (score / questions.length) * 100
         )
       : 0;
 
+  // ==========================================================
+  // CURRENT QUESTION
+  // ==========================================================
+
+  const current =
+    questions[currentQuestion];
 
   // ==========================================================
   // RENDER
   // ==========================================================
 
   return (
-
     <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col md:flex-row">
 
       <Sidebar />
 
       <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-
         <div className="max-w-5xl mx-auto">
-
 
           {/* ==================================================
               HEADER
@@ -434,8 +411,13 @@ export default function MCQGenerator() {
                 🧠
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
-                MCQ generator
+              <h1
+                className="text-3xl md:text-4xl font-bold"
+                style={{
+                  fontFamily: "'Sora', sans-serif",
+                }}
+              >
+                MCQ Generator
               </h1>
 
             </div>
@@ -446,7 +428,6 @@ export default function MCQGenerator() {
             </p>
 
           </div>
-
 
           {/* ==================================================
               GENERATOR FORM
@@ -459,6 +440,8 @@ export default function MCQGenerator() {
               <h2 className="text-xl font-semibold mb-6">
                 Create your quiz
               </h2>
+
+              {/* EXAM + SUBJECT */}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
@@ -475,20 +458,14 @@ export default function MCQGenerator() {
                     }
                     className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                   >
-
-                    {EXAMS.map(
-                      (item) => (
-
-                        <option
-                          key={item}
-                          value={item}
-                        >
-                          {item}
-                        </option>
-
-                      )
-                    )}
-
+                    {EXAMS.map((item) => (
+                      <option
+                        key={item}
+                        value={item}
+                      >
+                        {item}
+                      </option>
+                    ))}
                   </select>
 
                 </div>
@@ -506,26 +483,19 @@ export default function MCQGenerator() {
                     }
                     className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                   >
-
-                    {SUBJECTS.map(
-                      (item) => (
-
-                        <option
-                          key={item}
-                          value={item}
-                        >
-                          {item}
-                        </option>
-
-                      )
-                    )}
-
+                    {SUBJECTS.map((item) => (
+                      <option
+                        key={item}
+                        value={item}
+                      >
+                        {item}
+                      </option>
+                    ))}
                   </select>
 
                 </div>
 
               </div>
-
 
               {/* TOPIC */}
 
@@ -542,11 +512,18 @@ export default function MCQGenerator() {
                   onChange={(e) =>
                     setTopic(e.target.value)
                   }
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !loading
+                    ) {
+                      handleGenerate();
+                    }
+                  }}
                   className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                 />
 
               </div>
-
 
               {/* DIFFICULTY + COUNT */}
 
@@ -565,20 +542,14 @@ export default function MCQGenerator() {
                     }
                     className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                   >
-
-                    {DIFFICULTIES.map(
-                      (item) => (
-
-                        <option
-                          key={item}
-                          value={item}
-                        >
-                          {item}
-                        </option>
-
-                      )
-                    )}
-
+                    {DIFFICULTIES.map((item) => (
+                      <option
+                        key={item}
+                        value={item}
+                      >
+                        {item}
+                      </option>
+                    ))}
                   </select>
 
                 </div>
@@ -594,19 +565,24 @@ export default function MCQGenerator() {
                     min="1"
                     max="20"
                     value={count}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const value =
+                        Number(e.target.value);
+
+                      if (
+                        Number.isNaN(value)
+                      ) {
+                        setCount(1);
+                        return;
+                      }
+
                       setCount(
                         Math.min(
                           20,
-                          Math.max(
-                            1,
-                            Number(
-                              e.target.value
-                            )
-                          )
+                          Math.max(1, value)
                         )
-                      )
-                    }
+                      );
+                    }}
                     className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                   />
 
@@ -614,19 +590,13 @@ export default function MCQGenerator() {
 
               </div>
 
-
               {/* ERROR */}
 
               {error && (
-
                 <div className="mb-5 p-4 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300">
-
                   {error}
-
                 </div>
-
               )}
-
 
               {/* BUTTON */}
 
@@ -639,24 +609,21 @@ export default function MCQGenerator() {
                     : "bg-indigo-600 hover:bg-indigo-700"
                 }`}
               >
-
                 {loading
                   ? "AI is generating questions..."
                   : "Generate MCQs"}
-
               </button>
 
             </div>
-
           )}
-
 
           {/* ==================================================
               QUIZ
           ================================================== */}
 
           {questions.length > 0 &&
-            !submitted && (
+            !submitted &&
+            current && (
 
               <div>
 
@@ -684,7 +651,6 @@ export default function MCQGenerator() {
                   </button>
 
                 </div>
-
 
                 {/* PROGRESS */}
 
@@ -718,7 +684,7 @@ export default function MCQGenerator() {
                         width: `${
                           ((currentQuestion + 1) /
                             questions.length) *
-                            100
+                          100
                         }%`,
                       }}
                     />
@@ -727,10 +693,11 @@ export default function MCQGenerator() {
 
                 </div>
 
-
                 {/* QUESTION CARD */}
 
                 <div className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8">
+
+                  {/* QUESTION */}
 
                   <div className="flex gap-3 mb-7">
 
@@ -741,21 +708,13 @@ export default function MCQGenerator() {
                     <div className="text-xl md:text-2xl font-semibold leading-relaxed flex-1">
 
                       <MathText
-                        text={
-                          questions[
-                            currentQuestion
-                          ].question
-                        }
-                        display={
-                          subject ===
-                          "Mathematics"
-                        }
+                        text={current.question}
+                        display={subject === "Mathematics"}
                       />
 
                     </div>
 
                   </div>
-
 
                   {/* OPTIONS */}
 
@@ -770,7 +729,6 @@ export default function MCQGenerator() {
                           ] === option;
 
                         return (
-
                           <button
                             key={option}
                             onClick={() =>
@@ -801,9 +759,7 @@ export default function MCQGenerator() {
 
                                 <MathText
                                   text={
-                                    questions[
-                                      currentQuestion
-                                    ].options[
+                                    current.options?.[
                                       option
                                     ]
                                   }
@@ -818,30 +774,23 @@ export default function MCQGenerator() {
                             </div>
 
                           </button>
-
                         );
-
                       }
                     )}
 
                   </div>
-
 
                   {/* NAVIGATION */}
 
                   <div className="flex justify-between mt-8">
 
                     <button
-                      onClick={
-                        handlePrevious
-                      }
+                      onClick={handlePrevious}
                       disabled={
-                        currentQuestion ===
-                        0
+                        currentQuestion === 0
                       }
                       className={`px-5 py-3 rounded-xl font-medium transition ${
-                        currentQuestion ===
-                        0
+                        currentQuestion === 0
                           ? "bg-[#0B0E14] border border-slate-800 text-slate-600 cursor-not-allowed"
                           : "bg-[#0B0E14] border border-slate-800 hover:bg-slate-800"
                       }`}
@@ -853,20 +802,16 @@ export default function MCQGenerator() {
                     questions.length - 1 ? (
 
                       <button
-                        onClick={
-                          handleSubmit
-                        }
+                        onClick={handleSubmit}
                         className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-semibold transition"
                       >
-                        Submit quiz
+                        Submit Quiz
                       </button>
 
                     ) : (
 
                       <button
-                        onClick={
-                          handleNext
-                        }
+                        onClick={handleNext}
                         className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-semibold transition"
                       >
                         Next →
@@ -877,7 +822,6 @@ export default function MCQGenerator() {
                   </div>
 
                 </div>
-
 
                 {/* QUESTION NAVIGATOR */}
 
@@ -893,12 +837,9 @@ export default function MCQGenerator() {
                       (_, index) => {
 
                         const answered =
-                          selectedAnswers[
-                            index
-                          ];
+                          selectedAnswers[index];
 
                         return (
-
                           <button
                             key={index}
                             onClick={() =>
@@ -917,7 +858,6 @@ export default function MCQGenerator() {
                           >
                             {index + 1}
                           </button>
-
                         );
 
                       }
@@ -928,9 +868,7 @@ export default function MCQGenerator() {
                 </div>
 
               </div>
-
             )}
-
 
           {/* ==================================================
               RESULT
@@ -958,7 +896,13 @@ export default function MCQGenerator() {
                   Your score
                 </p>
 
-                <h2 className="text-5xl font-bold mb-3" style={{ fontFamily: "'Sora', sans-serif" }}>
+                <h2
+                  className="text-5xl font-bold mb-3"
+                  style={{
+                    fontFamily:
+                      "'Sora', sans-serif",
+                  }}
+                >
                   {percentage}%
                 </h2>
 
@@ -998,9 +942,7 @@ export default function MCQGenerator() {
                 </div>
 
                 <button
-                  onClick={
-                    handleNewQuiz
-                  }
+                  onClick={handleNewQuiz}
                   className="mt-7 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-semibold transition"
                 >
                   Generate new quiz
@@ -1008,12 +950,17 @@ export default function MCQGenerator() {
 
               </div>
 
-
               {/* REVIEW */}
 
               <div>
 
-                <h2 className="text-2xl font-bold mb-4" style={{ fontFamily: "'Sora', sans-serif" }}>
+                <h2
+                  className="text-2xl font-bold mb-4"
+                  style={{
+                    fontFamily:
+                      "'Sora', sans-serif",
+                  }}
+                >
                   Review answers
                 </h2>
 
@@ -1023,16 +970,13 @@ export default function MCQGenerator() {
                     (question, index) => {
 
                       const selected =
-                        selectedAnswers[
-                          index
-                        ];
+                        selectedAnswers[index];
 
                       const correct =
                         selected ===
                         question.answer;
 
                       return (
-
                         <div
                           key={index}
                           className="bg-[#151922] border border-slate-800 rounded-2xl p-6"
@@ -1068,7 +1012,6 @@ export default function MCQGenerator() {
 
                           </div>
 
-
                           {/* ANSWERS */}
 
                           <div className="space-y-2 mb-5">
@@ -1085,7 +1028,6 @@ export default function MCQGenerator() {
                                   selected;
 
                                 return (
-
                                   <div
                                     key={option}
                                     className={`p-3 rounded-lg border ${
@@ -1104,7 +1046,7 @@ export default function MCQGenerator() {
                                     <MathText
                                       text={
                                         question
-                                          .options[
+                                          .options?.[
                                           option
                                         ]
                                       }
@@ -1115,31 +1057,24 @@ export default function MCQGenerator() {
                                     />
 
                                     {isCorrect && (
-
                                       <span className="ml-2 text-emerald-400 text-sm">
                                         ✓ Correct
                                       </span>
-
                                     )}
 
                                     {isSelected &&
                                       !isCorrect && (
-
                                         <span className="ml-2 text-rose-400 text-sm">
                                           ✗ Your answer
                                         </span>
-
                                       )}
 
                                   </div>
-
                                 );
-
                               }
                             )}
 
                           </div>
-
 
                           {/* EXPLANATION */}
 
@@ -1166,9 +1101,7 @@ export default function MCQGenerator() {
                           </div>
 
                         </div>
-
                       );
-
                     }
                   )}
 
@@ -1177,14 +1110,11 @@ export default function MCQGenerator() {
               </div>
 
             </div>
-
           )}
 
         </div>
-
       </main>
 
     </div>
-
   );
 }
