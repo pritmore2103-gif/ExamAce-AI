@@ -49,8 +49,13 @@ class User(Base):
         default=False
     )
 
-    verification_token = Column(
+    otp_code = Column(
         String,
+        nullable=True
+    )
+
+    otp_expires_at = Column(
+        DateTime,
         nullable=True
     )
 
@@ -292,4 +297,9 @@ class SavedQuiz(Base):
 
     # --------------------------------------------------------
     # Created date
-    #
+    # --------------------------------------------------------
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
