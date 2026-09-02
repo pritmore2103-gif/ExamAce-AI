@@ -20,6 +20,14 @@ function App() {
       <div className="min-h-screen bg-slate-950 text-white">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/" element={<Home />} />
+
+          <Route path="/about" element={<About />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/contact" element={<Contact />} />
+          
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route
