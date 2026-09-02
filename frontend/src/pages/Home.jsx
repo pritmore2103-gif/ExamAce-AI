@@ -711,29 +711,99 @@ export default function Home() {
           FOOTER
       ===================================================== */}
 
-      <footer className="border-t border-slate-800 px-6 py-8">
+<footer className="border-t border-slate-800 px-6 py-10">
 
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+  <div className="max-w-7xl mx-auto">
 
-          <div className="flex items-center gap-2">
+    <div className="flex flex-col md:flex-row justify-between gap-8">
 
-            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <span className="text-xs font-bold">✓</span>
-            </div>
+      {/* Brand */}
+      <div>
 
-            <span className="text-sm font-semibold">
-              ExamAce<span className="text-indigo-500">AI</span>
-            </span>
+        <div className="flex items-center gap-2">
 
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+            ✓
           </div>
 
-          <p className="text-xs text-slate-500 text-center">
-            © {new Date().getFullYear()} ExamAce AI. All rights reserved.
-          </p>
+          <span className="font-bold">
+            ExamAce<span className="text-indigo-500">AI</span>
+          </span>
 
         </div>
 
-      </footer>
+        <p className="text-sm text-slate-500 mt-3 max-w-xs">
+          AI-powered tools for smarter, more organized exam preparation.
+        </p>
+
+        <p className="text-xs text-slate-600 mt-4">
+          Developed by Pritam More
+        </p>
+
+      </div>
+
+
+      {/* Links */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-12 gap-y-4 text-sm">
+
+        <Link
+          to="/about"
+          className="text-slate-400 hover:text-white transition"
+        >
+          About
+        </Link>
+
+        <Link
+          to="/pricing"
+          className="text-slate-400 hover:text-white transition"
+        >
+          Pricing
+        </Link>
+
+        <Link
+          to="/contact"
+          className="text-slate-400 hover:text-white transition"
+        >
+          Support
+        </Link>
+
+        <Link
+          to="/privacy"
+          className="text-slate-400 hover:text-white transition"
+        >
+          Privacy
+        </Link>
+
+        <Link
+          to="/terms"
+          className="text-slate-400 hover:text-white transition"
+        >
+          Terms
+        </Link>
+
+        <Link
+          to="/register"
+          className="text-slate-400 hover:text-white transition"
+        >
+          Register
+        </Link>
+
+      </div>
+
+    </div>
+
+
+    <div className="border-t border-slate-800 mt-8 pt-6">
+
+      <p className="text-xs text-slate-600 text-center">
+        © {new Date().getFullYear()} ExamAce AI. All rights reserved.
+      </p>
+
+    </div>
+
+  </div>
+
+</footer>
 
     </div>
   );
