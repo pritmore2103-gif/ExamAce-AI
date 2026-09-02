@@ -30,42 +30,124 @@ const DIFFICULTIES = [
 // MATH RENDERER
 // ============================================================
 
-function MathText({ text, display = false }) {
-  if (text === null || text === undefined) {
+// ============================================================
+// MATH RENDERER
+// ============================================================
+
+const TEXT_WORDS = new Set([
+  "where", "then", "when", "therefore", "hence", "since", "given",
+  "such", "that", "this", "the", "is", "are", "and", "or", "for",
+  "thus", "using", "find", "solve", "value", "of", "if", "general",
+  "solution",
+]);
+
+function MathText({ text }) {
+
+  if (!text) {
     return null;
   }
 
-  const value = String(text).trim();
+  const value = String(text);
 
-  if (!value) {
-    return null;
+  // Normalize unicode math symbols into LaTeX commands first
+  let formatted = value
+    .replace(/√\s*\(([^)]+)\)/g, "\\sqrt{$1}")
+    .replace(/√\s*([A-Za-z0-9]+)/g, "\\sqrt{$1}")
+    .replace(/\b(sin|cos|tan|cot|sec|csc|log|ln)\s*\(/g, "\\$1(")
+    .replace(/π/g, "\\pi")
+    .replace(/θ/g, "\\theta")
+    .replace(/α/g, "\\alpha")
+    .replace(/β/g, "\\beta")
+    .replace(/γ/g, "\\gamma")
+    .replace(/Δ/g, "\\Delta")
+    .replace(/×/g, "\\times")
+    .replace(/÷/g, "\\div")
+    .replace(/∞/g, "\\infty")
+    .replace(/≤/g, "\\leq")
+    .replace(/≥/g, "\\geq")
+    .replace(/≠/g, "\\neq")
+    .replace(/∈/g, "\\in")
+    .replace(/∑/g, "\\sum")
+    .replace(/∫/g, "\\int");
+
+  // Explicit block delimiters win outright
+  if (formatted.startsWith("$$") && formatted.endsWith("$$")) {
+    return <BlockMath>{formatted.slice(2, -2)}</BlockMath>;
   }
 
-  const hasLatex =
-    value.includes("$") ||
-    value.includes("\\(") ||
-    value.includes("\\)") ||
-    value.includes("\\[") ||
-    value.includes("\\]") ||
-    value.includes("\\frac") ||
-    value.includes("\\sqrt") ||
-    value.includes("\\pi") ||
-    value.includes("\\theta") ||
-    value.includes("\\alpha") ||
-    value.includes("\\beta") ||
-    value.includes("\\gamma") ||
-    value.includes("\\sin") ||
-    value.includes("\\cos") ||
-    value.includes("\\tan") ||
-    value.includes("\\log") ||
-    value.includes("^") ||
-    value.includes("π") ||
-    value.includes("√") ||
-    value.includes("≤") ||
-    value.includes("≥") ||
-    value.includes("≠") ||
-    value.includes("∞");
+  if (formatted.startsWith("\\[") && formatted.endsWith("\\]")) {
+    return <BlockMath>{formatted.slice(2, -2)}</BlockMath>;
+  }
 
+  // Split into whitespace / $...$ / \(...\) / plain tokens
+  const tokens = formatted.split(/(\$[^$]*\$|\\\([^)]*\\\)|\s+)/).filter(Boolean);
+
+  const isWhitespace = (t) => /^\s+$/.test(t);
+  const isDelimited = (t) => /^\$[^$]*\$$/.test(t) || /^\\\([^)]*\\\)$/.test(t);
+
+  const isMathToken = (t) => {
+    const bare = t.replace(/[.,;:]+$/, "");
+
+    if (TEXT_WORDS.has(bare.toLowerCase())) {
+      return false;
+    }
+
+    return (
+      /\\[a-zA-Z]+/.test(bare) ||
+      /[0-9^]/.test(bare) ||
+      /^[A-Za-z]$/.test(bare) ||
+      /[=+\-*/()]/.test(bare)
+    );
+  };
+
+  const output = [];
+  let buffer = [];
+
+  const flushBuffer = () => {
+    if (buffer.length === 0) {
+      return;
+    }
+
+    const mathStr = buffer.join(" ").trim();
+
+    if (mathStr) {
+      output.push(<InlineMath key={output.length}>{mathStr}</InlineMath>);
+    }
+
+    buffer = [];
+  };
+
+  tokens.forEach((token) => {
+    if (isWhitespace(token)) {
+      if (buffer.length === 0) {
+        output.push(" ");
+      }
+      return;
+    }
+
+    if (isDelimited(token)) {
+      flushBuffer();
+
+      const inner = token.startsWith("$")
+        ? token.slice(1, -1)
+        : token.slice(2, -2);
+
+      output.push(<InlineMath key={output.length}>{inner}</InlineMath>);
+      return;
+    }
+
+    if (isMathToken(token)) {
+      buffer.push(token);
+    } else {
+      flushBuffer();
+      output.push(<span key={output.length}>{token} </span>);
+    }
+  });
+
+  flushBuffer();
+
+  return <span className="leading-8">{output}</span>;
+}
   // Normal text
   if (!hasLatex) {
     return (
