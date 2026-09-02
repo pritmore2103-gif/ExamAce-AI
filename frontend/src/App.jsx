@@ -7,6 +7,12 @@ import Planner from "./pages/Planner";
 import Notes from "./pages/Notes";
 import MCQGenerator from "./pages/MCQGenerator";
 import ProtectedRoute from "./components/ProtectedRoute";
+import About from "./pages/About";
+import Pricing from "./pages/Pricing";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Contact from "./pages/Contact";
+
 
 function App() {
   return (
