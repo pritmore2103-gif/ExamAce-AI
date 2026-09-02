@@ -25,6 +25,57 @@ export async function registerUser(data) {
 
 
 // ============================================================
+// VERIFY OTP
+// ============================================================
+
+export async function verifyOTP(email, otp) {
+
+  const response = await fetch(
+    `${API_URL}/verify-otp`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        email,
+        otp,
+      }),
+    }
+  );
+
+  return response.json();
+}
+
+
+// ============================================================
+// RESEND OTP
+// ============================================================
+
+export async function resendOTP(email) {
+
+  const response = await fetch(
+    `${API_URL}/resend-otp`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        email,
+      }),
+    }
+  );
+
+  return response.json();
+}
+
+
+// ============================================================
 // LOGIN
 // ============================================================
 
@@ -470,22 +521,6 @@ export async function getDashboard() {
     }
   );
 
-
-  return response.json();
-}
-
-
-// ============================================================
-// VERIFY EMAIL
-// ============================================================
-
-export async function verifyEmail(token) {
-  const response = await fetch(
-    `${API_URL}/verify-email?token=${token}`,
-    {
-      method: "GET",
-    }
-  );
 
   return response.json();
 }
