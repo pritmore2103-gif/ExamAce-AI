@@ -39,17 +39,6 @@ function MathText({ text, display = false }) {
 
   const value = String(text);
 
-  /*
-   * If the AI explicitly returns LaTeX using:
-   *
-   * $...$
-   * $$...$$
-   * \(...\)
-   * \[...\]
-   *
-   * render it directly.
-   */
-
   const hasLatex =
     value.includes("$") ||
     value.includes("\\(") ||
@@ -72,12 +61,6 @@ function MathText({ text, display = false }) {
       </span>
     );
   }
-
-
-  /*
-   * Convert common plain-text mathematical notation
-   * into LaTeX-friendly notation.
-   */
 
   let formatted = value;
 
@@ -111,18 +94,11 @@ function MathText({ text, display = false }) {
     .replace(/∑/g, "\\sum")
     .replace(/∫/g, "\\int");
 
-
-  /*
-   * If the entire value looks like a mathematical expression,
-   * render it as block math.
-   */
-
   const looksLikePureMath =
     display ||
     /^[\s\dA-Za-z+\-*/=^().,√πθ∞≤≥≠∈∑∫\\{}[\]]+$/.test(
       value
     );
-
 
   if (
     value.startsWith("$$") &&
@@ -136,7 +112,6 @@ function MathText({ text, display = false }) {
     );
   }
 
-
   if (
     value.startsWith("\\[") &&
     value.endsWith("\\]")
@@ -149,7 +124,6 @@ function MathText({ text, display = false }) {
     );
   }
 
-
   if (looksLikePureMath) {
 
     return (
@@ -158,14 +132,6 @@ function MathText({ text, display = false }) {
       </BlockMath>
     );
   }
-
-
-  /*
-   * Mixed text + mathematics.
-   *
-   * Example:
-   * "If x^2 = 25, then x = 5."
-   */
 
   const parts = formatted.split(
     /(\$[^$]+\$|\\\([^)]*\\\))/g
@@ -188,7 +154,6 @@ function MathText({ text, display = false }) {
           );
         }
 
-
         if (
           part.startsWith("\\(") &&
           part.endsWith("\\)")
@@ -200,7 +165,6 @@ function MathText({ text, display = false }) {
             </InlineMath>
           );
         }
-
 
         return (
           <span key={index}>
@@ -272,7 +236,6 @@ export default function MCQGenerator() {
       return;
     }
 
-
     try {
 
       setLoading(true);
@@ -283,7 +246,6 @@ export default function MCQGenerator() {
       setSelectedAnswers({});
       setSubmitted(false);
 
-
       const data =
         await generateMCQ(
           topic,
@@ -292,7 +254,6 @@ export default function MCQGenerator() {
           subject,
           exam
         );
-
 
       if (
         !data.questions ||
@@ -303,7 +264,6 @@ export default function MCQGenerator() {
           "Invalid MCQ response from server."
         );
       }
-
 
       setQuestions(
         data.questions
@@ -352,7 +312,7 @@ export default function MCQGenerator() {
   const handleNext = () => {
 
     if (
-      currentQuestion <
+      currentQuestion 
       questions.length - 1
     ) {
 
@@ -453,10 +413,9 @@ export default function MCQGenerator() {
 
   return (
 
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col md:flex-row">
 
       <Sidebar />
-
 
       <main className="flex-1 p-6 md:p-8 overflow-y-auto">
 
@@ -471,12 +430,12 @@ export default function MCQGenerator() {
 
             <div className="flex items-center gap-3 mb-2">
 
-              <div className="text-4xl">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600/15 border border-indigo-600/30 flex items-center justify-center text-2xl">
                 🧠
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-bold">
-                MCQ Generator
+              <h1 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
+                MCQ generator
               </h1>
 
             </div>
@@ -495,12 +454,11 @@ export default function MCQGenerator() {
 
           {questions.length === 0 && (
 
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
+            <div className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
 
               <h2 className="text-xl font-semibold mb-6">
-                Create Your Quiz
+                Create your quiz
               </h2>
-
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
@@ -515,7 +473,7 @@ export default function MCQGenerator() {
                     onChange={(e) =>
                       setExam(e.target.value)
                     }
-                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 outline-none focus:border-blue-500"
+                    className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                   >
 
                     {EXAMS.map(
@@ -535,7 +493,6 @@ export default function MCQGenerator() {
 
                 </div>
 
-
                 <div>
 
                   <label className="block text-sm text-slate-400 mb-2">
@@ -547,7 +504,7 @@ export default function MCQGenerator() {
                     onChange={(e) =>
                       setSubject(e.target.value)
                     }
-                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 outline-none focus:border-blue-500"
+                    className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                   >
 
                     {SUBJECTS.map(
@@ -585,7 +542,7 @@ export default function MCQGenerator() {
                   onChange={(e) =>
                     setTopic(e.target.value)
                   }
-                  className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 outline-none focus:border-blue-500"
+                  className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                 />
 
               </div>
@@ -606,7 +563,7 @@ export default function MCQGenerator() {
                     onChange={(e) =>
                       setDifficulty(e.target.value)
                     }
-                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 outline-none focus:border-blue-500"
+                    className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                   >
 
                     {DIFFICULTIES.map(
@@ -626,11 +583,10 @@ export default function MCQGenerator() {
 
                 </div>
 
-
                 <div>
 
                   <label className="block text-sm text-slate-400 mb-2">
-                    Number of Questions
+                    Number of questions
                   </label>
 
                   <input
@@ -651,7 +607,7 @@ export default function MCQGenerator() {
                         )
                       )
                     }
-                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 outline-none focus:border-blue-500"
+                    className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none focus:border-indigo-600 transition"
                   />
 
                 </div>
@@ -663,9 +619,9 @@ export default function MCQGenerator() {
 
               {error && (
 
-                <div className="mb-5 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
+                <div className="mb-5 p-4 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300">
 
-                  ⚠️ {error}
+                  {error}
 
                 </div>
 
@@ -679,14 +635,14 @@ export default function MCQGenerator() {
                 disabled={loading}
                 className={`w-full py-3.5 rounded-xl font-semibold transition ${
                   loading
-                    ? "bg-slate-700 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
+                    ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                    : "bg-indigo-600 hover:bg-indigo-700"
                 }`}
               >
 
                 {loading
-                  ? "🧠 AI is generating questions..."
-                  : "🚀 Generate MCQs"}
+                  ? "AI is generating questions..."
+                  : "Generate MCQs"}
 
               </button>
 
@@ -704,14 +660,13 @@ export default function MCQGenerator() {
 
               <div>
 
-
                 {/* QUIZ HEADER */}
 
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
 
                   <div>
 
-                    <p className="text-blue-400 font-medium">
+                    <p className="text-indigo-400 font-medium">
                       {exam} • {subject}
                     </p>
 
@@ -721,12 +676,11 @@ export default function MCQGenerator() {
 
                   </div>
 
-
                   <button
                     onClick={handleNewQuiz}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm"
+                    className="px-4 py-2 rounded-xl bg-[#151922] border border-slate-800 hover:bg-slate-800 text-sm transition"
                   >
-                    ✕ Exit Quiz
+                    Exit quiz
                   </button>
 
                 </div>
@@ -756,11 +710,10 @@ export default function MCQGenerator() {
 
                   </div>
 
-
                   <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
 
                     <div
-                      className="h-full bg-blue-600 transition-all"
+                      className="h-full bg-indigo-600 transition-all"
                       style={{
                         width: `${
                           ((currentQuestion + 1) /
@@ -777,11 +730,11 @@ export default function MCQGenerator() {
 
                 {/* QUESTION CARD */}
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8">
+                <div className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8">
 
                   <div className="flex gap-3 mb-7">
 
-                    <span className="flex-shrink-0 w-9 h-9 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold">
+                    <span className="flex-shrink-0 w-9 h-9 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold">
                       {currentQuestion + 1}
                     </span>
 
@@ -816,7 +769,6 @@ export default function MCQGenerator() {
                             currentQuestion
                           ] === option;
 
-
                         return (
 
                           <button
@@ -828,8 +780,8 @@ export default function MCQGenerator() {
                             }
                             className={`w-full text-left p-4 rounded-xl border transition ${
                               isSelected
-                                ? "border-blue-500 bg-blue-500/10"
-                                : "border-slate-700 bg-slate-800/60 hover:bg-slate-800 hover:border-slate-600"
+                                ? "border-indigo-500 bg-indigo-500/10"
+                                : "border-slate-800 bg-[#0B0E14] hover:border-slate-700"
                             }`}
                           >
 
@@ -838,13 +790,12 @@ export default function MCQGenerator() {
                               <span
                                 className={`w-9 h-9 flex-shrink-0 rounded-lg flex items-center justify-center font-bold ${
                                   isSelected
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-slate-700 text-slate-300"
+                                    ? "bg-indigo-600 text-white"
+                                    : "bg-slate-800 text-slate-300"
                                 }`}
                               >
                                 {option}
                               </span>
-
 
                               <span className="pt-1 text-slate-200 flex-1">
 
@@ -888,16 +839,15 @@ export default function MCQGenerator() {
                         currentQuestion ===
                         0
                       }
-                      className={`px-5 py-3 rounded-xl font-medium ${
+                      className={`px-5 py-3 rounded-xl font-medium transition ${
                         currentQuestion ===
                         0
-                          ? "bg-slate-800 text-slate-600 cursor-not-allowed"
-                          : "bg-slate-800 hover:bg-slate-700"
+                          ? "bg-[#0B0E14] border border-slate-800 text-slate-600 cursor-not-allowed"
+                          : "bg-[#0B0E14] border border-slate-800 hover:bg-slate-800"
                       }`}
                     >
                       ← Previous
                     </button>
-
 
                     {currentQuestion ===
                     questions.length - 1 ? (
@@ -906,9 +856,9 @@ export default function MCQGenerator() {
                         onClick={
                           handleSubmit
                         }
-                        className="px-6 py-3 rounded-xl bg-green-600 hover:bg-green-700 font-semibold"
+                        className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-semibold transition"
                       >
-                        🏁 Submit Quiz
+                        Submit quiz
                       </button>
 
                     ) : (
@@ -917,7 +867,7 @@ export default function MCQGenerator() {
                         onClick={
                           handleNext
                         }
-                        className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold"
+                        className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-semibold transition"
                       >
                         Next →
                       </button>
@@ -931,12 +881,11 @@ export default function MCQGenerator() {
 
                 {/* QUESTION NAVIGATOR */}
 
-                <div className="mt-6 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                <div className="mt-6 bg-[#151922] border border-slate-800 rounded-2xl p-5">
 
                   <p className="text-sm text-slate-400 mb-3">
-                    Question Navigator
+                    Question navigator
                   </p>
-
 
                   <div className="flex flex-wrap gap-2">
 
@@ -957,13 +906,13 @@ export default function MCQGenerator() {
                                 index
                               )
                             }
-                            className={`w-10 h-10 rounded-lg text-sm font-semibold ${
+                            className={`w-10 h-10 rounded-lg text-sm font-semibold transition ${
                               index ===
                               currentQuestion
-                                ? "bg-blue-600"
+                                ? "bg-indigo-600"
                                 : answered
-                                ? "bg-blue-600/30 text-blue-300"
-                                : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                                ? "bg-indigo-600/30 text-indigo-300"
+                                : "bg-[#0B0E14] border border-slate-800 text-slate-400 hover:bg-slate-800"
                             }`}
                           >
                             {index + 1}
@@ -991,10 +940,9 @@ export default function MCQGenerator() {
 
             <div>
 
-
               {/* RESULT CARD */}
 
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center mb-6">
+              <div className="bg-[#151922] border border-slate-800 rounded-2xl p-8 text-center mb-6">
 
                 <div className="text-5xl mb-4">
 
@@ -1006,16 +954,13 @@ export default function MCQGenerator() {
 
                 </div>
 
-
                 <p className="text-slate-400 mb-2">
-                  Your Score
+                  Your score
                 </p>
 
-
-                <h2 className="text-5xl font-bold mb-3">
+                <h2 className="text-5xl font-bold mb-3" style={{ fontFamily: "'Sora', sans-serif" }}>
                   {percentage}%
                 </h2>
-
 
                 <p className="text-slate-300">
                   {score} out of{" "}
@@ -1023,12 +968,11 @@ export default function MCQGenerator() {
                   correct
                 </p>
 
-
                 <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mt-7">
 
-                  <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4">
+                  <div className="bg-emerald-950/30 border border-emerald-800 rounded-xl p-4">
 
-                    <div className="text-2xl font-bold text-green-400">
+                    <div className="text-2xl font-bold text-emerald-400">
                       {score}
                     </div>
 
@@ -1038,10 +982,9 @@ export default function MCQGenerator() {
 
                   </div>
 
+                  <div className="bg-rose-950/30 border border-rose-800 rounded-xl p-4">
 
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-
-                    <div className="text-2xl font-bold text-red-400">
+                    <div className="text-2xl font-bold text-rose-400">
                       {questions.length -
                         score}
                     </div>
@@ -1054,14 +997,13 @@ export default function MCQGenerator() {
 
                 </div>
 
-
                 <button
                   onClick={
                     handleNewQuiz
                   }
-                  className="mt-7 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold"
+                  className="mt-7 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-semibold transition"
                 >
-                  🔄 Generate New Quiz
+                  Generate new quiz
                 </button>
 
               </div>
@@ -1071,10 +1013,9 @@ export default function MCQGenerator() {
 
               <div>
 
-                <h2 className="text-2xl font-bold mb-4">
-                  📖 Review Answers
+                <h2 className="text-2xl font-bold mb-4" style={{ fontFamily: "'Sora', sans-serif" }}>
+                  Review answers
                 </h2>
-
 
                 <div className="space-y-5">
 
@@ -1090,12 +1031,11 @@ export default function MCQGenerator() {
                         selected ===
                         question.answer;
 
-
                       return (
 
                         <div
                           key={index}
-                          className="bg-slate-900 border border-slate-800 rounded-2xl p-6"
+                          className="bg-[#151922] border border-slate-800 rounded-2xl p-6"
                         >
 
                           {/* QUESTION */}
@@ -1105,13 +1045,12 @@ export default function MCQGenerator() {
                             <span
                               className={`w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center font-bold ${
                                 correct
-                                  ? "bg-green-500/20 text-green-400"
-                                  : "bg-red-500/20 text-red-400"
+                                  ? "bg-emerald-500/20 text-emerald-400"
+                                  : "bg-rose-500/20 text-rose-400"
                               }`}
                             >
                               {index + 1}
                             </span>
-
 
                             <div className="font-semibold text-lg leading-relaxed flex-1">
 
@@ -1145,24 +1084,22 @@ export default function MCQGenerator() {
                                   option ===
                                   selected;
 
-
                                 return (
 
                                   <div
                                     key={option}
                                     className={`p-3 rounded-lg border ${
                                       isCorrect
-                                        ? "border-green-500/40 bg-green-500/10"
+                                        ? "border-emerald-500/40 bg-emerald-500/10"
                                         : isSelected
-                                        ? "border-red-500/40 bg-red-500/10"
-                                        : "border-slate-800 bg-slate-800/40"
+                                        ? "border-rose-500/40 bg-rose-500/10"
+                                        : "border-slate-800 bg-[#0B0E14]"
                                     }`}
                                   >
 
                                     <span className="font-semibold mr-2">
                                       {option}.
                                     </span>
-
 
                                     <MathText
                                       text={
@@ -1177,20 +1114,18 @@ export default function MCQGenerator() {
                                       }
                                     />
 
-
                                     {isCorrect && (
 
-                                      <span className="ml-2 text-green-400 text-sm">
+                                      <span className="ml-2 text-emerald-400 text-sm">
                                         ✓ Correct
                                       </span>
 
                                     )}
 
-
                                     {isSelected &&
                                       !isCorrect && (
 
-                                        <span className="ml-2 text-red-400 text-sm">
+                                        <span className="ml-2 text-rose-400 text-sm">
                                           ✗ Your answer
                                         </span>
 
@@ -1208,12 +1143,11 @@ export default function MCQGenerator() {
 
                           {/* EXPLANATION */}
 
-                          <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                          <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/20">
 
-                            <p className="text-blue-400 font-semibold mb-2">
-                              💡 Explanation
+                            <p className="text-indigo-400 font-semibold mb-2">
+                              Explanation
                             </p>
-
 
                             <div className="text-slate-300 leading-7">
 
