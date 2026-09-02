@@ -30,168 +30,88 @@ const DIFFICULTIES = [
 // MATH RENDERER
 // ============================================================
 
-// ============================================================
-// MATH RENDERER
-// ============================================================
-
 const TEXT_WORDS = new Set([
-  "where", "then", "when", "therefore", "hence", "since", "given",
-  "such", "that", "this", "the", "is", "are", "and", "or", "for",
-  "thus", "using", "find", "solve", "value", "of", "if", "general",
+  "where",
+  "then",
+  "when",
+  "therefore",
+  "hence",
+  "since",
+  "given",
+  "such",
+  "that",
+  "this",
+  "the",
+  "is",
+  "are",
+  "and",
+  "or",
+  "for",
+  "thus",
+  "using",
+  "find",
+  "solve",
+  "value",
+  "of",
+  "if",
+  "general",
   "solution",
+  "a",
+  "an",
+  "to",
+  "in",
+  "on",
+  "with",
+  "from",
+  "by",
 ]);
 
-function MathText({ text }) {
-
-  if (!text) {
-    return null;
-  }
-
-  const value = String(text);
-
-  // Normalize unicode math symbols into LaTeX commands first
-  let formatted = value
-    .replace(/√\s*\(([^)]+)\)/g, "\\sqrt{$1}")
-    .replace(/√\s*([A-Za-z0-9]+)/g, "\\sqrt{$1}")
-    .replace(/\b(sin|cos|tan|cot|sec|csc|log|ln)\s*\(/g, "\\$1(")
-    .replace(/π/g, "\\pi")
-    .replace(/θ/g, "\\theta")
-    .replace(/α/g, "\\alpha")
-    .replace(/β/g, "\\beta")
-    .replace(/γ/g, "\\gamma")
-    .replace(/Δ/g, "\\Delta")
-    .replace(/×/g, "\\times")
-    .replace(/÷/g, "\\div")
-    .replace(/∞/g, "\\infty")
-    .replace(/≤/g, "\\leq")
-    .replace(/≥/g, "\\geq")
-    .replace(/≠/g, "\\neq")
-    .replace(/∈/g, "\\in")
-    .replace(/∑/g, "\\sum")
-    .replace(/∫/g, "\\int");
-
-  // Explicit block delimiters win outright
-  if (formatted.startsWith("$$") && formatted.endsWith("$$")) {
-    return <BlockMath>{formatted.slice(2, -2)}</BlockMath>;
-  }
-
-  if (formatted.startsWith("\\[") && formatted.endsWith("\\]")) {
-    return <BlockMath>{formatted.slice(2, -2)}</BlockMath>;
-  }
-
-  // Split into whitespace / $...$ / \(...\) / plain tokens
-  const tokens = formatted.split(/(\$[^$]*\$|\\\([^)]*\\\)|\s+)/).filter(Boolean);
-
-  const isWhitespace = (t) => /^\s+$/.test(t);
-  const isDelimited = (t) => /^\$[^$]*\$$/.test(t) || /^\\\([^)]*\\\)$/.test(t);
-
-  const isMathToken = (t) => {
-    const bare = t.replace(/[.,;:]+$/, "");
-
-    if (TEXT_WORDS.has(bare.toLowerCase())) {
-      return false;
-    }
-
-    return (
-      /\\[a-zA-Z]+/.test(bare) ||
-      /[0-9^]/.test(bare) ||
-      /^[A-Za-z]$/.test(bare) ||
-      /[=+\-*/()]/.test(bare)
-    );
-  };
-
-  const output = [];
-  let buffer = [];
-
-  const flushBuffer = () => {
-    if (buffer.length === 0) {
-      return;
-    }
-
-    const mathStr = buffer.join(" ").trim();
-
-    if (mathStr) {
-      output.push(<InlineMath key={output.length}>{mathStr}</InlineMath>);
-    }
-
-    buffer = [];
-  };
-
-  tokens.forEach((token) => {
-    if (isWhitespace(token)) {
-      if (buffer.length === 0) {
-        output.push(" ");
-      }
-      return;
-    }
-
-    if (isDelimited(token)) {
-      flushBuffer();
-
-      const inner = token.startsWith("$")
-        ? token.slice(1, -1)
-        : token.slice(2, -2);
-
-      output.push(<InlineMath key={output.length}>{inner}</InlineMath>);
-      return;
-    }
-
-    if (isMathToken(token)) {
-      buffer.push(token);
-    } else {
-      flushBuffer();
-      output.push(<span key={output.length}>{token} </span>);
-    }
-  });
-
-  flushBuffer();
-
-  return <span className="leading-8">{output}</span>;
-}
-  // Normal text
-  if (!hasLatex) {
-    return (
-      <span className="whitespace-pre-wrap">
-        {value}
-      </span>
-    );
-  }
-
-  let formatted = value;
-
-  // Convert common symbols to LaTeX
-  formatted = formatted
+function normalizeMath(text) {
+  return String(text)
+    // Square root
     .replace(/√\s*\(([^)]+)\)/g, "\\sqrt{$1}")
     .replace(/√\s*([A-Za-z0-9]+)/g, "\\sqrt{$1}")
 
+    // Trigonometric / logarithmic functions
     .replace(
       /\b(sin|cos|tan|cot|sec|csc|log|ln)\s*\(/g,
       "\\$1("
     )
 
+    // Greek / common symbols
     .replace(/π/g, "\\pi")
     .replace(/θ/g, "\\theta")
     .replace(/α/g, "\\alpha")
     .replace(/β/g, "\\beta")
     .replace(/γ/g, "\\gamma")
+    .replace(/δ/g, "\\delta")
     .replace(/Δ/g, "\\Delta")
+    .replace(/λ/g, "\\lambda")
+    .replace(/μ/g, "\\mu")
+    .replace(/ω/g, "\\omega")
 
+    // Operators
     .replace(/×/g, "\\times")
     .replace(/÷/g, "\\div")
-
     .replace(/∞/g, "\\infty")
-
     .replace(/≤/g, "\\leq")
     .replace(/≥/g, "\\geq")
     .replace(/≠/g, "\\neq")
-
     .replace(/∈/g, "\\in")
-
     .replace(/∑/g, "\\sum")
     .replace(/∫/g, "\\int");
+}
+
+function MathText({ text, display = false }) {
+  if (text === null || text === undefined || text === "") {
+    return null;
+  }
+
+  const value = String(text);
+  const formatted = normalizeMath(value);
 
   // ==========================================================
-  // FULL BLOCK LATEX
+  // FULL BLOCK LATEX: $$ ... $$
   // ==========================================================
 
   if (
@@ -207,6 +127,10 @@ function MathText({ text }) {
     );
   }
 
+  // ==========================================================
+  // FULL BLOCK LATEX: \[ ... \]
+  // ==========================================================
+
   if (
     formatted.startsWith("\\[") &&
     formatted.endsWith("\\]")
@@ -221,7 +145,7 @@ function MathText({ text }) {
   }
 
   // ==========================================================
-  // PURE MATHEMATICAL EXPRESSION
+  // PURE MATH EXPRESSION
   // ==========================================================
 
   const looksLikePureMath =
@@ -233,9 +157,7 @@ function MathText({ text }) {
   if (looksLikePureMath) {
     return (
       <div className="overflow-x-auto py-2">
-        <BlockMath>
-          {formatted}
-        </BlockMath>
+        <BlockMath>{formatted}</BlockMath>
       </div>
     );
   }
@@ -362,7 +284,10 @@ export default function MCQGenerator() {
 
       setQuestions(data.questions);
     } catch (err) {
-      console.error("MCQ generation error:", err);
+      console.error(
+        "MCQ generation error:",
+        err
+      );
 
       setError(
         err?.message ||
@@ -392,7 +317,8 @@ export default function MCQGenerator() {
 
   const handleNext = () => {
     if (
-      currentQuestion < questions.length - 1
+      currentQuestion <
+      questions.length - 1
     ) {
       setCurrentQuestion(
         (prev) => prev + 1
@@ -496,7 +422,8 @@ export default function MCQGenerator() {
               <h1
                 className="text-3xl md:text-4xl font-bold"
                 style={{
-                  fontFamily: "'Sora', sans-serif",
+                  fontFamily:
+                    "'Sora', sans-serif",
                 }}
               >
                 MCQ Generator
@@ -505,8 +432,8 @@ export default function MCQGenerator() {
             </div>
 
             <p className="text-slate-400">
-              Generate AI-powered practice questions
-              and test your knowledge.
+              Generate AI-powered practice
+              questions and test your knowledge.
             </p>
 
           </div>
@@ -661,7 +588,10 @@ export default function MCQGenerator() {
                       setCount(
                         Math.min(
                           20,
-                          Math.max(1, value)
+                          Math.max(
+                            1,
+                            value
+                          )
                         )
                       );
                     }}
@@ -791,7 +721,10 @@ export default function MCQGenerator() {
 
                       <MathText
                         text={current.question}
-                        display={subject === "Mathematics"}
+                        display={
+                          subject ===
+                          "Mathematics"
+                        }
                       />
 
                     </div>
