@@ -58,10 +58,10 @@ export default function Contact() {
             </p>
 
             <a
-              href="mailto:support@examaceai.com"
+              href="mailto:examace.ai21@gmail.com"
               className="inline-block mt-5 text-indigo-400 hover:text-indigo-300 text-sm font-medium"
             >
-              support@examaceai.com →
+              examace.ai21@gmail.com →
             </a>
 
           </div>
@@ -83,10 +83,10 @@ export default function Contact() {
             </p>
 
             <a
-              href="mailto:hello@examaceai.com"
+              href="mailto:pritmore2103@gmail.com"
               className="inline-block mt-5 text-indigo-400 hover:text-indigo-300 text-sm font-medium"
             >
-              hello@examaceai.com →
+              pritmore2103@gmail.com →
             </a>
 
           </div>
