@@ -5,9 +5,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Planner from "./pages/Planner";
 import Notes from "./pages/Notes";
-import Chat from "./pages/Chat";
 import MCQGenerator from "./pages/MCQGenerator";
-import Quiz from "./pages/Quiz";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -27,14 +25,6 @@ function App() {
             }
           />
           <Route
-            path="/quiz"
-            element={
-              <ProtectedRoute>
-                <Quiz />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/planner"
             element={
               <ProtectedRoute>
@@ -47,14 +37,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <Notes />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/chat"
-            element={
-              <ProtectedRoute>
-                <Chat />
               </ProtectedRoute>
             }
           />
