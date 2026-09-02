@@ -1075,7 +1075,7 @@ export default function Planner() {
   // ============================================================
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
       <Sidebar />
 
       <main className="flex-1 p-6 md:p-8 overflow-y-auto">
