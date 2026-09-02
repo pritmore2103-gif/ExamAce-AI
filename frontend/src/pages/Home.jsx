@@ -69,7 +69,7 @@ export default function Home() {
             <div className="text-sm text-slate-500 mb-7">
              Developed by 
              <span className="text-slate-300 font-medium">
-               Pritam More
+                Pritam More
              </span>
             </div>
 
