@@ -1058,3 +1058,783 @@ export default function Planner() {
             </div>
 
             <h2 className="text-xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
+              Loading your planner...
+            </h2>
+
+            <p className="text-slate-400 mt-2">
+              Checking your saved study plan.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // MAIN UI
+  // ============================================================
+
+  return (
+    <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col md:flex-row">
+      <Sidebar />
+
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+        <div className="max-w-6xl mx-auto">
+
+          {/* ==================================================
+              HEADER
+          ================================================== */}
+
+          <div className="mb-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
+                  Study planner
+                </h1>
+
+                <p className="text-slate-400 mt-2">
+                  Plan your preparation your way.
+                </p>
+              </div>
+
+              {planId && (
+                <span className="w-fit text-xs px-3 py-2 rounded-full bg-emerald-950/40 border border-emerald-800 text-emerald-400">
+                  ● Plan saved
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* ==================================================
+              SUCCESS MESSAGE
+          ================================================== */}
+
+          {successMessage && (
+            <div className="mb-6 bg-emerald-950/40 border border-emerald-800 text-emerald-300 p-4 rounded-xl">
+              {successMessage}
+            </div>
+          )}
+
+          {/* ==================================================
+              MODES
+          ================================================== */}
+
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">
+              How do you want to plan?
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {MODES.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setMode(item.id)}
+                  className={`text-left p-5 rounded-2xl border transition ${
+                    mode === item.id
+                      ? "border-indigo-600 bg-indigo-600/10"
+                      : "border-slate-800 bg-[#151922] hover:border-slate-700"
+                  }`}
+                >
+                  <div className="text-3xl mb-3">
+                    {item.icon}
+                  </div>
+
+                  <h3 className="font-bold text-lg">
+                    {item.title}
+                  </h3>
+
+                  <p className="text-sm text-slate-400 mt-2">
+                    {item.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* ==================================================
+              STUDY INFORMATION
+          ================================================== */}
+
+          <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
+            <h2 className="text-xl font-bold mb-6">
+              Study information
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+
+              {/* TODAY */}
+
+              <div className="bg-[#0B0E14] border border-slate-800 p-4 rounded-xl">
+                <p className="text-sm text-slate-400">
+                  Today
+                </p>
+
+                <p className="font-semibold mt-1">
+                  {todayString}
+                </p>
+              </div>
+
+              {/* EXAM */}
+
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">
+                  Target exam
+                </label>
+
+                <select
+                  value={exam}
+                  onChange={(e) =>
+                    setExam(e.target.value)
+                  }
+                  className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 focus:border-indigo-600 outline-none transition"
+                >
+                  <option value="">
+                    Select exam
+                  </option>
+
+                  <option value="MHT-CET">
+                    MHT-CET
+                  </option>
+
+                  <option value="JEE">
+                    JEE
+                  </option>
+
+                  <option value="NEET">
+                    NEET
+                  </option>
+
+                  <option value="CBSE Board">
+                    CBSE Board
+                  </option>
+
+                  <option value="Maharashtra Board">
+                    Maharashtra Board
+                  </option>
+                </select>
+              </div>
+
+              {/* EXAM DATE */}
+
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">
+                  Exam date
+                </label>
+
+                <input
+                  type="date"
+                  min={todayISO}
+                  value={examDate}
+                  onChange={(e) =>
+                    setExamDate(e.target.value)
+                  }
+                  className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 focus:border-indigo-600 outline-none transition"
+                />
+              </div>
+
+              {/* HOURS */}
+
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">
+                  Study hours / day
+                </label>
+
+                <input
+                  type="number"
+                  min="1"
+                  max="16"
+                  step="0.5"
+                  value={hours}
+                  onChange={(e) =>
+                    setHours(e.target.value)
+                  }
+                  placeholder="e.g. 5"
+                  className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 focus:border-indigo-600 outline-none transition"
+                />
+              </div>
+            </div>
+
+            {/* DAYS */}
+
+            {daysRemaining !== null && (
+              <div className="mt-5 bg-indigo-600/10 border border-indigo-600/30 p-4 rounded-xl">
+                <p className="text-sm text-slate-400">
+                  Preparation time
+                </p>
+
+                <p className="text-2xl font-bold text-indigo-400 mt-1">
+                  {daysRemaining > 0
+                    ? `${daysRemaining} days remaining`
+                    : "Exam date has passed"}
+                </p>
+              </div>
+            )}
+          </section>
+
+          {/* ==================================================
+              SUBJECT STRENGTH
+          ================================================== */}
+
+          <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
+            <h2 className="text-xl font-bold mb-2">
+              Subject strength
+            </h2>
+
+            <p className="text-slate-400 text-sm mb-6">
+              Tell AI how confident you are in each subject.
+            </p>
+
+            <div className="space-y-4">
+              {subjects.map(
+                (subject, index) => (
+                  <div
+                    key={subject.name}
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0B0E14] border border-slate-800 p-4 rounded-xl"
+                  >
+                    <span className="font-semibold">
+                      {subject.name}
+                    </span>
+
+                    <div className="flex gap-2">
+                      {[
+                        "Weak",
+                        "Average",
+                        "Strong",
+                      ].map((level) => (
+                        <button
+                          key={level}
+                          type="button"
+                          onClick={() =>
+                            updateSubjectLevel(
+                              index,
+                              level
+                            )
+                          }
+                          className={`px-4 py-2 rounded-lg text-sm transition ${
+                            subject.level === level
+                              ? "bg-indigo-600"
+                              : "bg-slate-800 hover:bg-slate-700"
+                          }`}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </section>
+
+          {/* ==================================================
+              CREATE BUTTON
+          ================================================== */}
+
+          <div className="flex flex-wrap gap-3 mb-8">
+            <button
+              type="button"
+              onClick={createPlanner}
+              disabled={
+                loadingAI ||
+                savingPlan ||
+                deletingPlan
+              }
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-500 px-8 py-3 rounded-xl font-semibold transition"
+            >
+              {loadingAI
+                ? "AI is creating your plan..."
+                : savingPlan
+                ? "Saving plan..."
+                : mode === "normal"
+                ? "Create my planner"
+                : mode === "ai"
+                ? "Generate with AI"
+                : "Generate AI + editable plan"}
+            </button>
+
+            {planId && (
+              <button
+                type="button"
+                onClick={deletePlan}
+                disabled={
+                  deletingPlan ||
+                  loadingAI ||
+                  savingPlan
+                }
+                className="bg-rose-950/40 hover:bg-rose-950/60 border border-rose-800 text-rose-300 px-6 py-3 rounded-xl font-semibold transition"
+              >
+                {deletingPlan
+                  ? "Deleting..."
+                  : "Delete plan"}
+              </button>
+            )}
+          </div>
+
+          {/* ==================================================
+              ERROR
+          ================================================== */}
+
+          {aiError && (
+            <div className="bg-rose-950/40 border border-rose-800 text-rose-300 p-4 rounded-xl mb-8">
+              <p className="font-semibold mb-1">
+                Planner error
+              </p>
+
+              <p>{aiError}</p>
+            </div>
+          )}
+
+          {/* ==================================================
+              AI PLAN
+          ================================================== */}
+
+          {(mode === "ai" ||
+            mode === "both") && (
+            <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
+
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>
+                    AI study plan
+                  </h2>
+
+                  <p className="text-slate-400 text-sm mt-1">
+                    Personalized for your preparation
+                  </p>
+                </div>
+
+                {loadingAI && (
+                  <div className="text-indigo-400 animate-pulse">
+                    Generating...
+                  </div>
+                )}
+              </div>
+
+              {aiPlan && (
+                <div className="space-y-6">
+
+                  {/* OVERVIEW */}
+
+                  {aiPlan.overview && (
+                    <div className="bg-[#0B0E14] border border-slate-800 rounded-xl p-5">
+                      <h3 className="text-lg font-bold mb-2">
+                        Strategy
+                      </h3>
+
+                      <p className="text-slate-300 leading-7">
+                        {aiPlan.overview}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* PROGRESS */}
+
+                  <div className="bg-[#0B0E14] border border-slate-800 rounded-xl p-5">
+                    <div className="flex justify-between mb-3">
+                      <span className="font-semibold">
+                        AI plan progress
+                      </span>
+
+                      <span className="text-indigo-400 font-bold">
+                        {aiProgress}%
+                      </span>
+                    </div>
+
+                    <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-600 transition-all duration-500"
+                        style={{
+                          width: `${aiProgress}%`,
+                        }}
+                      />
+                    </div>
+
+                    <p className="text-sm text-slate-400 mt-2">
+                      {completedAITaskCount} of{" "}
+                      {totalAITasks} tasks completed
+                    </p>
+                  </div>
+
+                  {/* PHASES */}
+
+                  {aiPlan.phases?.length > 0 && (
+                    <div>
+                      <h3 className="text-xl font-bold mb-4">
+                        Preparation phases
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {aiPlan.phases.map(
+                          (phase, index) => (
+                            <div
+                              key={index}
+                              className="bg-[#0B0E14] border border-slate-800 p-5 rounded-xl"
+                            >
+                              <h4 className="font-bold text-lg">
+                                {phase.name}
+                              </h4>
+
+                              <p className="text-sm text-slate-400 mt-1">
+                                Day{" "}
+                                {phase.start_day}{" "}
+                                → Day{" "}
+                                {phase.end_day}
+                              </p>
+
+                              <p className="text-slate-300 mt-3">
+                                {phase.goal}
+                              </p>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DAILY PLAN */}
+
+                  {aiPlan.daily_plan?.length > 0 && (
+                    <div>
+                      <h3 className="text-xl font-bold mb-4">
+                        Daily plan
+                      </h3>
+
+                      <div className="space-y-4">
+                        {aiPlan.daily_plan.map(
+                          (day, dayIndex) => (
+                            <div
+                              key={
+                                day.day ??
+                                day.date ??
+                                dayIndex
+                              }
+                              className="bg-[#0B0E14] border border-slate-800 rounded-xl p-5"
+                            >
+                              <div className="mb-4">
+                                <h4 className="text-lg font-bold">
+                                  Day {day.day}
+                                </h4>
+
+                                <p className="text-sm text-slate-400">
+                                  {day.date}
+                                </p>
+                              </div>
+
+                              <div className="space-y-3">
+                                {day.tasks?.map(
+                                  (
+                                    task,
+                                    taskIndex
+                                  ) => {
+                                    const completed =
+                                      Boolean(
+                                        task.completed
+                                      );
+
+                                    const taskKey =
+                                      task.id ||
+                                      `${day.day}-${taskIndex}`;
+
+                                    return (
+                                      <div
+                                        key={taskKey}
+                                        className={`flex items-start gap-4 p-4 rounded-xl transition ${
+                                          completed
+                                            ? "bg-emerald-950/30 border border-emerald-800"
+                                            : "bg-[#151922] border border-slate-800"
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={
+                                            completed
+                                          }
+                                          onChange={() =>
+                                            toggleAITask(
+                                              task.id
+                                            )
+                                          }
+                                          disabled={
+                                            !task.id
+                                          }
+                                          className="mt-1 w-5 h-5 cursor-pointer accent-indigo-600"
+                                        />
+
+                                        <div className="flex-1">
+                                          <div className="flex flex-wrap justify-between gap-2">
+                                            <h5
+                                              className={`font-semibold ${
+                                                completed
+                                                  ? "line-through text-slate-500"
+                                                  : ""
+                                              }`}
+                                            >
+                                              {task.subject}{" "}
+                                              —{" "}
+                                              {task.topic}
+                                            </h5>
+
+                                            <span className="text-indigo-400 text-sm">
+                                              {task.hours}h
+                                            </span>
+                                          </div>
+
+                                          {task.activity && (
+                                            <p className="text-sm text-slate-400 mt-1">
+                                              {
+                                                task.activity
+                                              }
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                )}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* EMPTY AI STATE */}
+
+              {!aiPlan &&
+                !loadingAI &&
+                !aiError && (
+                  <div className="text-slate-500 text-center py-8">
+                    Fill in your study information and generate your plan.
+                  </div>
+                )}
+            </section>
+          )}
+
+          {/* ==================================================
+              ADD TASK
+          ================================================== */}
+
+          {(mode === "normal" ||
+            mode === "both") &&
+            planCreated && (
+              <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
+
+                <h2 className="text-xl font-bold mb-6">
+                  Add study task
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+                  <input
+                    type="text"
+                    value={taskText}
+                    onChange={(e) =>
+                      setTaskText(e.target.value)
+                    }
+                    placeholder="Topic / task"
+                    className="p-3 rounded-xl bg-[#0B0E14] border border-slate-800 focus:border-indigo-600 outline-none transition"
+                  />
+
+                  <select
+                    value={taskSubject}
+                    onChange={(e) =>
+                      setTaskSubject(e.target.value)
+                    }
+                    className="p-3 rounded-xl bg-[#0B0E14] border border-slate-800 focus:border-indigo-600 outline-none transition"
+                  >
+                    {subjects.map((subject) => (
+                      <option
+                        key={subject.name}
+                        value={subject.name}
+                      >
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="date"
+                    value={taskDate}
+                    min={todayISO}
+                    onChange={(e) =>
+                      setTaskDate(e.target.value)
+                    }
+                    className="p-3 rounded-xl bg-[#0B0E14] border border-slate-800 focus:border-indigo-600 outline-none transition"
+                  />
+
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="24"
+                    step="0.5"
+                    value={taskHours}
+                    onChange={(e) =>
+                      setTaskHours(e.target.value)
+                    }
+                    placeholder="Hours"
+                    className="p-3 rounded-xl bg-[#0B0E14] border border-slate-800 focus:border-indigo-600 outline-none transition"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addTask}
+                  disabled={addingTask}
+                  className="mt-5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 disabled:text-slate-500 px-6 py-3 rounded-xl font-semibold transition"
+                >
+                  {addingTask
+                    ? "Adding..."
+                    : "Add task"}
+                </button>
+              </section>
+            )}
+
+          {/* ==================================================
+              MANUAL PROGRESS
+          ================================================== */}
+
+          {planCreated &&
+            tasks.length > 0 && (
+              <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 mb-8">
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="text-xl font-bold">
+                    Planner progress
+                  </h2>
+
+                  <span className="text-indigo-400 font-bold">
+                    {progress}%
+                  </span>
+                </div>
+
+                <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-600 transition-all duration-500"
+                    style={{
+                      width: `${progress}%`,
+                    }}
+                  />
+                </div>
+
+                <p className="text-sm text-slate-400 mt-3">
+                  {completedTasks} of{" "}
+                  {tasks.length} tasks completed
+                </p>
+              </section>
+            )}
+
+          {/* ==================================================
+              TASK LIST
+          ================================================== */}
+
+          {tasks.length > 0 && (
+            <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
+
+              <h2 className="text-xl font-bold mb-6">
+                Your tasks
+              </h2>
+
+              <div className="space-y-3">
+                {tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border ${
+                      task.completed
+                        ? "bg-emerald-950/30 border-emerald-800"
+                        : "bg-[#0B0E14] border-slate-800"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={task.completed}
+                        onChange={() =>
+                          toggleTask(task.id)
+                        }
+                        className="mt-1 w-5 h-5 cursor-pointer accent-indigo-600"
+                      />
+
+                      <div>
+                        <h3
+                          className={`font-semibold ${
+                            task.completed
+                              ? "line-through text-slate-500"
+                              : ""
+                          }`}
+                        >
+                          {task.text}
+                        </h3>
+
+                        <p className="text-sm text-slate-400 mt-1">
+                          {task.subject} •{" "}
+                          {task.date} •{" "}
+                          {task.hours}h
+                        </p>
+
+                        {task.activity && (
+                          <p className="text-xs text-slate-500 mt-1">
+                            {task.activity}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleTask(task.id)
+                        }
+                        className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition"
+                      >
+                        {task.completed
+                          ? "Undo"
+                          : "Complete"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          deleteTask(task.id)
+                        }
+                        className="px-4 py-2 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300 hover:bg-rose-950/60 transition"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ==================================================
+              FINAL EMPTY STATE
+          ================================================== */}
+
+          {!planCreated &&
+            !loadingAI && (
+              <div className="text-center text-slate-500 py-10">
+                <div className="text-5xl mb-4">
+                  📚
+                </div>
+
+                <h3 className="text-xl font-semibold text-slate-300">
+                  Your study journey starts here
+                </h3>
+
+                <p className="mt-2">
+                  Select your exam, set your target date,
+                  choose your study hours and create your plan.
+                </p>
+              </div>
+            )}
+        </div>
+      </main>
+    </div>
+  );
+}
