@@ -4,368 +4,296 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0B0E14] text-white overflow-hidden">
 
-      {/* ============================================================
+      {/* =====================================================
           NAVBAR
-      ============================================================ */}
+      ===================================================== */}
 
-      <nav className="border-b border-slate-800/60 bg-[#0B0E14]/80 backdrop-blur-xl sticky top-0 z-50">
+      <nav className="relative z-20 max-w-7xl mx-auto px-6 md:px-10 py-5">
+        <div className="flex items-center justify-between">
 
-        <div className="max-w-7xl mx-auto px-6 py-4">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
+              <span className="text-white font-bold">✓</span>
+            </div>
 
-          <div className="flex items-center justify-between">
+            <span
+              className="text-xl font-bold tracking-tight"
+              style={{ fontFamily: "'Sora', sans-serif" }}
+            >
+              ExamAce<span className="text-indigo-500">AI</span>
+            </span>
+          </Link>
 
-            {/* LOGO */}
+          {/* Navigation */}
+          <div className="flex items-center gap-2 sm:gap-4">
 
             <Link
-              to="/"
-              className="flex items-center gap-3"
+              to="/login"
+              className="text-sm font-medium text-slate-300 hover:text-white transition px-3 py-2"
             >
-
-              <div className="w-10 h-10 rounded-xl bg-indigo-600/15 border border-indigo-500/30 flex items-center justify-center text-xl">
-                🧠
-              </div>
-
-              <div>
-                <h1
-                  className="text-xl font-bold"
-                  style={{
-                    fontFamily: "'Sora', sans-serif",
-                  }}
-                >
-                  ExamAce <span className="text-indigo-400">AI</span>
-                </h1>
-
-                <p className="text-[10px] text-slate-500 tracking-wider uppercase">
-                  Study smarter
-                </p>
-              </div>
-
+              Login
             </Link>
 
-
-            {/* NAVIGATION */}
-
-            <div className="hidden md:flex items-center gap-8 text-sm text-slate-400">
-
-              <a
-                href="#features"
-                className="hover:text-white transition"
-              >
-                Features
-              </a>
-
-              <a
-                href="#how-it-works"
-                className="hover:text-white transition"
-              >
-                How it works
-              </a>
-
-              <a
-                href="#who"
-                className="hover:text-white transition"
-              >
-                Who it's for
-              </a>
-
-            </div>
-
-
-            {/* AUTH */}
-
-            <div className="flex items-center gap-3">
-
-              <Link
-                to="/login"
-                className="hidden sm:block px-4 py-2 text-sm text-slate-300 hover:text-white transition"
-              >
-                Login
-              </Link>
-
-              <Link
-                to="/register"
-                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm font-semibold transition shadow-lg shadow-indigo-600/20"
-              >
-                Register Free
-              </Link>
-
-            </div>
+            <Link
+              to="/register"
+              className="bg-indigo-600 hover:bg-indigo-500 px-4 sm:px-5 py-2.5 rounded-lg text-sm font-semibold transition shadow-lg shadow-indigo-600/20"
+            >
+              Get started
+            </Link>
 
           </div>
-
         </div>
-
       </nav>
 
 
-      {/* ============================================================
+      {/* =====================================================
           HERO
-      ============================================================ */}
+      ===================================================== */}
 
-      <section className="relative">
+      <main>
 
-        {/* Background glow */}
+        <section className="relative px-6 pt-20 md:pt-28 pb-24">
 
-        <div className="absolute inset-0 pointer-events-none">
+          {/* Background glow */}
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-indigo-600/20 blur-[120px] rounded-full pointer-events-none" />
 
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-600/10 blur-[120px] rounded-full" />
+          <div className="relative max-w-5xl mx-auto text-center">
 
-          <div className="absolute top-40 left-10 w-40 h-40 bg-purple-600/5 blur-[80px] rounded-full" />
-
-        </div>
-
-
-        <div className="relative max-w-7xl mx-auto px-6 pt-24 pb-20 md:pt-32 md:pb-28">
-
-          <div className="max-w-4xl mx-auto text-center">
-
-            {/* BADGE */}
-
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm mb-7">
-
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 text-indigo-300 text-xs sm:text-sm font-medium mb-7">
+              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
               AI-powered exam preparation
-
             </div>
 
 
-            {/* HEADLINE */}
-
+            {/* Heading */}
             <h1
-              className="text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight"
-              style={{
-                fontFamily: "'Sora', sans-serif",
-              }}
+              className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.05]"
+              style={{ fontFamily: "'Sora', sans-serif" }}
             >
-
-              Stop studying harder.
-
+              Your smarter way to
               <br />
 
-              <span className="text-indigo-400">
-                Start studying smarter.
+              <span className="bg-gradient-to-r from-indigo-400 via-indigo-500 to-purple-500 bg-clip-text text-transparent">
+                prepare for exams.
               </span>
-
             </h1>
 
 
-            {/* DESCRIPTION */}
-
-            <p className="mt-7 text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-
-              ExamAce AI turns your syllabus into personalized
-              questions, notes, quizzes, and study plans —
-              so you always know{" "}
-              <span className="text-slate-200">
-                what to study next.
-              </span>
-
+            {/* Description */}
+            <p className="mt-7 max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-slate-400 leading-relaxed">
+              ExamAce AI turns your exam goals into a personalized study
+              plan, generates revision notes, and gives you unlimited-style
+              practice through AI-powered MCQs.
             </p>
 
 
             {/* CTA */}
-
-            <div className="mt-9 flex flex-col sm:flex-row justify-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 mt-9">
 
               <Link
                 to="/register"
-                className="px-7 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-semibold text-lg transition shadow-xl shadow-indigo-600/20"
+                className="group bg-indigo-600 hover:bg-indigo-500 px-7 py-3.5 rounded-xl font-semibold transition shadow-xl shadow-indigo-600/20"
               >
-                Start Preparing Free →
+                Start preparing free
+                <span className="inline-block ml-2 group-hover:translate-x-1 transition">
+                  →
+                </span>
               </Link>
 
-              <a
-                href="#features"
-                className="px-7 py-4 rounded-xl bg-[#151922] border border-slate-800 hover:border-slate-700 hover:bg-slate-800 font-semibold text-lg transition"
+              <Link
+                to="/login"
+                className="px-7 py-3.5 rounded-xl border border-slate-700 hover:border-slate-500 bg-white/[0.02] hover:bg-white/[0.04] font-semibold transition"
               >
-                Explore Features
-              </a>
+                I already have an account
+              </Link>
 
             </div>
 
 
-            <p className="mt-5 text-sm text-slate-600">
-              Built for students who want a smarter way to prepare.
+            {/* Small trust line */}
+            <p className="mt-5 text-xs text-slate-500">
+              Built for students preparing for MHT-CET, JEE, NEET & board exams.
             </p>
 
           </div>
 
 
-          {/* ========================================================
-              HERO PRODUCT PREVIEW
-          ======================================================== */}
+          {/* =================================================
+              PRODUCT PREVIEW
+          ================================================= */}
 
-          <div className="mt-20 max-w-5xl mx-auto">
+          <div className="relative max-w-5xl mx-auto mt-20">
 
-            <div className="relative rounded-2xl border border-slate-800 bg-[#11151E] shadow-2xl shadow-black/40 overflow-hidden">
+            <div className="rounded-2xl border border-slate-800 bg-[#11151D] shadow-2xl shadow-black/40 overflow-hidden">
 
-              {/* Browser top */}
+              {/* Fake browser header */}
+              <div className="h-11 border-b border-slate-800 flex items-center px-4 gap-2">
 
-              <div className="h-12 border-b border-slate-800 flex items-center px-5 gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />
 
-                <div className="w-3 h-3 rounded-full bg-slate-700" />
-                <div className="w-3 h-3 rounded-full bg-slate-700" />
-                <div className="w-3 h-3 rounded-full bg-slate-700" />
-
-                <div className="ml-5 flex-1 max-w-md mx-auto h-7 rounded-lg bg-[#0B0E14] border border-slate-800 flex items-center justify-center text-xs text-slate-600">
-                  app.examace.ai
-                </div>
+                <div className="ml-4 h-6 flex-1 max-w-md mx-auto rounded-md bg-[#0B0E14] border border-slate-800" />
 
               </div>
 
 
-              {/* Dashboard preview */}
+              {/* Dashboard mockup */}
+              <div className="p-5 sm:p-8">
 
-              <div className="p-5 md:p-8">
+                <div className="grid md:grid-cols-3 gap-5">
 
-                <div className="grid md:grid-cols-3 gap-4">
+                  {/* Main plan */}
+                  <div className="md:col-span-2 rounded-xl bg-[#0B0E14] border border-slate-800 p-5">
 
-                  {/* Stats */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <p className="text-xs text-slate-500">
+                          TODAY'S PLAN
+                        </p>
 
-                  <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                        <h3 className="font-semibold mt-1">
+                          Wednesday, September 2
+                        </h3>
+                      </div>
 
-                    <div className="bg-[#151922] border border-slate-800 rounded-xl p-5">
-
-                      <p className="text-sm text-slate-500">
-                        Questions practiced
-                      </p>
-
-                      <p className="text-3xl font-bold mt-2">
-                        1,248
-                      </p>
-
-                      <p className="text-xs text-emerald-400 mt-2">
-                        ↑ Keep going
-                      </p>
-
+                      <span className="text-xs bg-indigo-500/10 text-indigo-400 px-3 py-1.5 rounded-lg">
+                        6.5 hrs
+                      </span>
                     </div>
 
 
-                    <div className="bg-[#151922] border border-slate-800 rounded-xl p-5">
+                    <div className="space-y-3">
 
-                      <p className="text-sm text-slate-500">
-                        Average score
-                      </p>
+                      {[
+                        ["Physics", "Current Electricity", "2 hrs"],
+                        ["Mathematics", "Matrices & Determinants", "2 hrs"],
+                        ["Chemistry", "Chemical Bonding", "1.5 hrs"],
+                        ["MCQ Practice", "Mixed Revision", "1 hr"],
+                      ].map(([subject, topic, time], index) => (
 
-                      <p className="text-3xl font-bold mt-2">
-                        82%
-                      </p>
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 rounded-lg bg-[#151922] border border-slate-800"
+                        >
 
-                      <p className="text-xs text-indigo-400 mt-2">
-                        Your progress
-                      </p>
+                          <div className="flex items-center gap-3">
 
-                    </div>
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-xs text-indigo-400">
+                              {index + 1}
+                            </div>
 
+                            <div>
+                              <p className="text-sm font-medium">
+                                {topic}
+                              </p>
 
-                    <div className="col-span-2 bg-[#151922] border border-slate-800 rounded-xl p-5">
+                              <p className="text-xs text-slate-500">
+                                {subject}
+                              </p>
+                            </div>
 
-                      <div className="flex items-center justify-between mb-5">
+                          </div>
 
-                        <div>
-                          <p className="font-semibold">
-                            Today's study plan
-                          </p>
+                          <span className="text-xs text-slate-500">
+                            {time}
+                          </span>
 
-                          <p className="text-xs text-slate-500 mt-1">
-                            Personalized by AI
-                          </p>
                         </div>
 
-                        <span className="text-indigo-400 text-sm">
-                          68%
+                      ))}
+
+                    </div>
+
+                  </div>
+
+
+                  {/* Progress */}
+                  <div className="rounded-xl bg-[#0B0E14] border border-slate-800 p-5">
+
+                    <p className="text-xs text-slate-500">
+                      YOUR PROGRESS
+                    </p>
+
+                    <div className="mt-5">
+
+                      <div className="flex justify-between items-end">
+
+                        <span className="text-4xl font-bold">
+                          72%
+                        </span>
+
+                        <span className="text-xs text-emerald-400">
+                          +8% this week
                         </span>
 
                       </div>
 
-
-                      <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                      <div className="h-2 bg-slate-800 rounded-full mt-4 overflow-hidden">
 
                         <div
-                          className="h-full bg-indigo-600 rounded-full"
-                          style={{
-                            width: "68%",
-                          }}
+                          className="h-full bg-indigo-500 rounded-full"
+                          style={{ width: "72%" }}
                         />
 
                       </div>
 
+                    </div>
 
-                      <div className="grid grid-cols-3 gap-3 mt-5">
 
-                        <div className="bg-[#0B0E14] rounded-lg p-3">
+                    <div className="mt-8 space-y-4">
 
-                          <p className="text-xs text-slate-500">
-                            Physics
-                          </p>
-
-                          <p className="text-sm font-semibold mt-1">
-                            Current Electricity
-                          </p>
-
+                      <div>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-slate-400">
+                            Mathematics
+                          </span>
+                          <span>85%</span>
                         </div>
 
-
-                        <div className="bg-[#0B0E14] rounded-lg p-3">
-
-                          <p className="text-xs text-slate-500">
-                            Maths
-                          </p>
-
-                          <p className="text-sm font-semibold mt-1">
-                            Matrices
-                          </p>
-
+                        <div className="h-1.5 bg-slate-800 rounded-full">
+                          <div
+                            className="h-full bg-indigo-500 rounded-full"
+                            style={{ width: "85%" }}
+                          />
                         </div>
-
-
-                        <div className="bg-[#0B0E14] rounded-lg p-3">
-
-                          <p className="text-xs text-slate-500">
-                            Chemistry
-                          </p>
-
-                          <p className="text-sm font-semibold mt-1">
-                            Solutions
-                          </p>
-
-                        </div>
-
                       </div>
 
-                    </div>
 
-                  </div>
+                      <div>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-slate-400">
+                            Physics
+                          </span>
+                          <span>61%</span>
+                        </div>
+
+                        <div className="h-1.5 bg-slate-800 rounded-full">
+                          <div
+                            className="h-full bg-indigo-500 rounded-full"
+                            style={{ width: "61%" }}
+                          />
+                        </div>
+                      </div>
 
 
-                  {/* AI card */}
+                      <div>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-slate-400">
+                            Chemistry
+                          </span>
+                          <span>74%</span>
+                        </div>
 
-                  <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-xl p-5">
-
-                    <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center text-xl">
-                      ✨
-                    </div>
-
-                    <p className="font-semibold mt-4">
-                      AI Study Assistant
-                    </p>
-
-                    <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-                      Generate practice questions,
-                      create notes and build a
-                      personalized study plan.
-                    </p>
-
-                    <div className="mt-6 p-3 rounded-lg bg-[#0B0E14] border border-slate-800">
-
-                      <p className="text-xs text-slate-500">
-                        Recommended
-                      </p>
-
-                      <p className="text-sm mt-1">
-                        Practice 10 Physics MCQs
-                      </p>
+                        <div className="h-1.5 bg-slate-800 rounded-full">
+                          <div
+                            className="h-full bg-indigo-500 rounded-full"
+                            style={{ width: "74%" }}
+                          />
+                        </div>
+                      </div>
 
                     </div>
 
@@ -377,479 +305,428 @@ export default function Home() {
 
             </div>
 
+            {/* Glow behind dashboard */}
+            <div className="absolute -inset-5 bg-indigo-600/10 blur-3xl -z-10" />
+
           </div>
 
-        </div>
-
-      </section>
+        </section>
 
 
-      {/* ============================================================
-          TRUST / VALUE STRIP
-      ============================================================ */}
+        {/* =====================================================
+            PROBLEM / SOLUTION
+        ===================================================== */}
 
-      <section className="border-y border-slate-800/60 bg-[#0E1118]">
+        <section className="border-y border-slate-800/70 bg-[#0D1118] px-6 py-24">
 
-        <div className="max-w-6xl mx-auto px-6 py-10">
+          <div className="max-w-6xl mx-auto">
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div className="max-w-2xl mb-14">
 
-            <div>
-              <p className="text-2xl font-bold">
-                AI-powered
+              <p className="text-indigo-400 text-sm font-semibold uppercase tracking-wider">
+                Stop studying randomly
               </p>
-              <p className="text-sm text-slate-500 mt-1">
-                Study assistance
+
+              <h2
+                className="text-3xl md:text-4xl font-bold mt-3"
+                style={{ fontFamily: "'Sora', sans-serif" }}
+              >
+                Less confusion.
+                <br />
+                More focused preparation.
+              </h2>
+
+              <p className="text-slate-400 mt-5 leading-relaxed">
+                Most students know they need to study. The difficult part is
+                deciding what to study, when to study it, and whether they
+                actually understand it.
               </p>
+
             </div>
 
-            <div>
-              <p className="text-2xl font-bold">
-                Personalized
-              </p>
-              <p className="text-sm text-slate-500 mt-1">
-                Study plans
-              </p>
-            </div>
 
-            <div>
-              <p className="text-2xl font-bold">
-                Practice
-              </p>
-              <p className="text-sm text-slate-500 mt-1">
-                Whenever you need
-              </p>
-            </div>
+            <div className="grid md:grid-cols-3 gap-6">
 
-            <div>
-              <p className="text-2xl font-bold">
-                One place
-              </p>
-              <p className="text-sm text-slate-500 mt-1">
-                For your preparation
-              </p>
-            </div>
+              <div className="p-6 rounded-2xl border border-slate-800 bg-[#11151D]">
+                <div className="text-2xl mb-5">😵‍💫</div>
 
-          </div>
+                <h3 className="font-bold text-lg">
+                  Don't know where to start?
+                </h3>
 
-        </div>
-
-      </section>
-
-
-      {/* ============================================================
-          FEATURES
-      ============================================================ */}
-
-      <section
-        id="features"
-        className="max-w-7xl mx-auto px-6 py-24 md:py-32"
-      >
-
-        <div className="max-w-2xl mb-14">
-
-          <p className="text-indigo-400 font-semibold text-sm uppercase tracking-wider">
-            Everything you need
-          </p>
-
-          <h2
-            className="text-3xl md:text-5xl font-bold mt-3"
-            style={{
-              fontFamily: "'Sora', sans-serif",
-            }}
-          >
-            Your AI-powered study toolkit.
-          </h2>
-
-          <p className="text-slate-400 text-lg mt-5 leading-relaxed">
-            Instead of jumping between different tools,
-            ExamAce AI brings the important parts of
-            exam preparation together.
-          </p>
-
-        </div>
-
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-
-          {/* MCQ */}
-
-          <FeatureCard
-            icon="🧠"
-            title="AI MCQ Generator"
-            description="Generate exam-focused multiple-choice questions based on your subject, topic and difficulty."
-          />
-
-          {/* Notes */}
-
-          <FeatureCard
-            icon="📝"
-            title="Smart Notes"
-            description="Turn topics into structured study notes designed to help you understand and revise faster."
-          />
-
-          {/* Planner */}
-
-          <FeatureCard
-            icon="📅"
-            title="AI Study Planner"
-            description="Create a personalized study schedule based on your subjects, available time and preparation goals."
-          />
-
-          {/* Quiz */}
-
-          <FeatureCard
-            icon="🎯"
-            title="Practice Quizzes"
-            description="Test yourself with generated quizzes and immediately see where you need more practice."
-          />
-
-          {/* Progress */}
-
-          <FeatureCard
-            icon="📊"
-            title="Track Your Progress"
-            description="See your study activity and quiz performance so you can make better decisions about what to revise."
-          />
-
-          {/* AI */}
-
-          <FeatureCard
-            icon="✨"
-            title="AI Assistance"
-            description="Use AI as a study companion to make preparation more organized, focused and efficient."
-          />
-
-        </div>
-
-      </section>
-
-
-      {/* ============================================================
-          HOW IT WORKS
-      ============================================================ */}
-
-      <section
-        id="how-it-works"
-        className="bg-[#0E1118] border-y border-slate-800/60"
-      >
-
-        <div className="max-w-7xl mx-auto px-6 py-24 md:py-32">
-
-          <div className="text-center max-w-2xl mx-auto">
-
-            <p className="text-indigo-400 font-semibold text-sm uppercase tracking-wider">
-              Simple workflow
-            </p>
-
-            <h2
-              className="text-3xl md:text-5xl font-bold mt-3"
-              style={{
-                fontFamily: "'Sora', sans-serif",
-              }}
-            >
-              From syllabus to study plan.
-            </h2>
-
-            <p className="text-slate-400 mt-5 text-lg">
-              ExamAce AI helps turn a vague study session
-              into a clear plan of action.
-            </p>
-
-          </div>
-
-
-          <div className="grid md:grid-cols-3 gap-8 mt-16">
-
-            <Step
-              number="01"
-              icon="📚"
-              title="Choose what you're studying"
-              description="Select your exam, subject, topic and difficulty."
-            />
-
-            <Step
-              number="02"
-              icon="🤖"
-              title="Let AI prepare it"
-              description="Generate questions, notes, quizzes or a study plan."
-            />
-
-            <Step
-              number="03"
-              icon="🚀"
-              title="Study and improve"
-              description="Practice, review your results and keep improving."
-            />
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      {/* ============================================================
-          WHO IT'S FOR
-      ============================================================ */}
-
-      <section
-        id="who"
-        className="max-w-7xl mx-auto px-6 py-24 md:py-32"
-      >
-
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
-
-          <div>
-
-            <p className="text-indigo-400 font-semibold text-sm uppercase tracking-wider">
-              Built for students
-            </p>
-
-            <h2
-              className="text-3xl md:text-5xl font-bold mt-3"
-              style={{
-                fontFamily: "'Sora', sans-serif",
-              }}
-            >
-              One platform.
-              <br />
-              Different study goals.
-            </h2>
-
-            <p className="text-slate-400 text-lg mt-6 leading-relaxed">
-              Whether you're starting a chapter, revising
-              before an exam or trying to improve your
-              practice score, ExamAce AI is designed to
-              adapt to your study session.
-            </p>
-
-          </div>
-
-
-          <div className="space-y-4">
-
-            <AudienceCard
-              icon="🎓"
-              title="School & junior college students"
-              description="Prepare for board and competitive exams with structured practice."
-            />
-
-            <AudienceCard
-              icon="🔥"
-              title="Competitive exam aspirants"
-              description="Practice topic-wise questions and focus on the areas that matter."
-            />
-
-            <AudienceCard
-              icon="⚡"
-              title="Students with limited study time"
-              description="Use AI to quickly organize what to study instead of wasting time planning."
-            />
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      {/* ============================================================
-          BIG CTA
-      ============================================================ */}
-
-      <section className="px-6 pb-24 md:pb-32">
-
-        <div className="max-w-5xl mx-auto relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-indigo-600/10 p-10 md:p-16 text-center">
-
-          <div className="absolute inset-0 pointer-events-none">
-
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-40 bg-indigo-500/20 blur-[100px]" />
-
-          </div>
-
-
-          <div className="relative">
-
-            <div className="text-4xl mb-5">
-              🚀
-            </div>
-
-            <h2
-              className="text-3xl md:text-5xl font-bold"
-              style={{
-                fontFamily: "'Sora', sans-serif",
-              }}
-            >
-              Ready to study smarter?
-            </h2>
-
-            <p className="text-slate-400 text-lg mt-5 max-w-xl mx-auto">
-              Create your ExamAce AI account and start
-              building a better study routine today.
-            </p>
-
-            <Link
-              to="/register"
-              className="inline-flex mt-8 px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-semibold text-lg transition shadow-xl shadow-indigo-600/20"
-            >
-              Create Your Free Account →
-            </Link>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      {/* ============================================================
-          FOOTER
-      ============================================================ */}
-
-      <footer className="border-t border-slate-800/60">
-
-        <div className="max-w-7xl mx-auto px-6 py-8">
-
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-
-            <div className="flex items-center gap-3">
-
-              <div className="w-8 h-8 rounded-lg bg-indigo-600/15 border border-indigo-500/20 flex items-center justify-center">
-                🧠
+                <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+                  Tell ExamAce your exam date, subjects and available study
+                  time. It creates a structured roadmap for you.
+                </p>
               </div>
 
-              <span className="font-semibold">
-                ExamAce <span className="text-indigo-400">AI</span>
-              </span>
+
+              <div className="p-6 rounded-2xl border border-slate-800 bg-[#11151D]">
+                <div className="text-2xl mb-5">📚</div>
+
+                <h3 className="font-bold text-lg">
+                  Too much to revise?
+                </h3>
+
+                <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+                  Generate concise AI-powered revision notes so you can focus
+                  on understanding instead of organizing everything yourself.
+                </p>
+              </div>
+
+
+              <div className="p-6 rounded-2xl border border-slate-800 bg-[#11151D]">
+                <div className="text-2xl mb-5">🎯</div>
+
+                <h3 className="font-bold text-lg">
+                  Not enough practice?
+                </h3>
+
+                <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+                  Generate topic-specific MCQs and use them to test your
+                  understanding before the real exam.
+                </p>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        {/* =====================================================
+            FEATURES
+        ===================================================== */}
+
+        <section className="px-6 py-24">
+
+          <div className="max-w-6xl mx-auto">
+
+            <div className="text-center max-w-2xl mx-auto">
+
+              <p className="text-indigo-400 text-sm font-semibold uppercase tracking-wider">
+                Everything in one place
+              </p>
+
+              <h2
+                className="text-3xl md:text-4xl font-bold mt-3"
+                style={{ fontFamily: "'Sora', sans-serif" }}
+              >
+                Your AI study toolkit
+              </h2>
+
+              <p className="text-slate-400 mt-4">
+                Tools designed to help you plan, learn, practice and track
+                your preparation.
+              </p>
 
             </div>
 
 
-            <p className="text-sm text-slate-600">
-              AI-powered exam preparation.
-            </p>
+            <div className="grid md:grid-cols-3 gap-6 mt-14">
+
+              {/* Planner */}
+              <div className="group rounded-2xl border border-slate-800 bg-[#11151D] p-7 hover:border-indigo-500/50 transition">
+
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-2xl mb-6">
+                  📅
+                </div>
+
+                <h3 className="text-xl font-bold">
+                  AI Study Planner
+                </h3>
+
+                <p className="text-slate-400 text-sm leading-relaxed mt-3">
+                  Turn your exam date and available study hours into a
+                  structured day-by-day preparation plan.
+                </p>
+
+                <div className="mt-6 text-xs text-indigo-400">
+                  Personalized → Adaptive → Organized
+                </div>
+
+              </div>
 
 
-            <div className="flex gap-5 text-sm text-slate-500">
+              {/* Notes */}
+              <div className="group rounded-2xl border border-slate-800 bg-[#11151D] p-7 hover:border-amber-500/50 transition">
 
-              <Link
-                to="/login"
-                className="hover:text-white transition"
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-2xl mb-6">
+                  📝
+                </div>
+
+                <h3 className="text-xl font-bold">
+                  AI Revision Notes
+                </h3>
+
+                <p className="text-slate-400 text-sm leading-relaxed mt-3">
+                  Generate clear, structured notes for the topics you need
+                  to revise without spending hours making them yourself.
+                </p>
+
+                <div className="mt-6 text-xs text-amber-400">
+                  Clear → Structured → Exam-focused
+                </div>
+
+              </div>
+
+
+              {/* MCQ */}
+              <div className="group rounded-2xl border border-slate-800 bg-[#11151D] p-7 hover:border-emerald-500/50 transition">
+
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-2xl mb-6">
+                  🧠
+                </div>
+
+                <h3 className="text-xl font-bold">
+                  AI MCQ Practice
+                </h3>
+
+                <p className="text-slate-400 text-sm leading-relaxed mt-3">
+                  Practice questions by subject, topic and difficulty, then
+                  review your answers and explanations.
+                </p>
+
+                <div className="mt-6 text-xs text-emerald-400">
+                  Practice → Test → Improve
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        {/* =====================================================
+            HOW IT WORKS
+        ===================================================== */}
+
+        <section className="px-6 py-24 bg-[#0D1118] border-y border-slate-800/70">
+
+          <div className="max-w-6xl mx-auto">
+
+            <div className="text-center">
+
+              <p className="text-indigo-400 text-sm font-semibold uppercase tracking-wider">
+                Simple by design
+              </p>
+
+              <h2
+                className="text-3xl md:text-4xl font-bold mt-3"
+                style={{ fontFamily: "'Sora', sans-serif" }}
               >
-                Login
-              </Link>
+                Start in minutes
+              </h2>
+
+            </div>
+
+
+            <div className="grid md:grid-cols-3 gap-10 mt-16">
+
+              <div className="text-center">
+
+                <div className="w-12 h-12 mx-auto rounded-full bg-indigo-600 flex items-center justify-center font-bold">
+                  1
+                </div>
+
+                <h3 className="font-bold text-lg mt-5">
+                  Create your profile
+                </h3>
+
+                <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+                  Select your exam, subjects and preparation preferences.
+                </p>
+
+              </div>
+
+
+              <div className="text-center">
+
+                <div className="w-12 h-12 mx-auto rounded-full bg-indigo-600 flex items-center justify-center font-bold">
+                  2
+                </div>
+
+                <h3 className="font-bold text-lg mt-5">
+                  Tell us your goals
+                </h3>
+
+                <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+                  Set your exam date, available study time and subject
+                  strengths.
+                </p>
+
+              </div>
+
+
+              <div className="text-center">
+
+                <div className="w-12 h-12 mx-auto rounded-full bg-indigo-600 flex items-center justify-center font-bold">
+                  3
+                </div>
+
+                <h3 className="font-bold text-lg mt-5">
+                  Let AI help
+                </h3>
+
+                <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+                  Generate plans, notes and practice questions whenever you
+                  need them.
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        {/* =====================================================
+            WHO IS IT FOR?
+        ===================================================== */}
+
+        <section className="px-6 py-24">
+
+          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-14 items-center">
+
+            <div>
+
+              <p className="text-indigo-400 text-sm font-semibold uppercase tracking-wider">
+                Built for students
+              </p>
+
+              <h2
+                className="text-3xl md:text-4xl font-bold mt-3"
+                style={{ fontFamily: "'Sora', sans-serif" }}
+              >
+                One place for your entire preparation.
+              </h2>
+
+              <p className="text-slate-400 mt-5 leading-relaxed">
+                Whether you're preparing for a competitive entrance exam or
+                your board exams, ExamAce AI helps you organize your
+                preparation around your own schedule.
+              </p>
 
               <Link
                 to="/register"
-                className="hover:text-white transition"
+                className="inline-flex mt-7 bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl font-semibold transition"
               >
-                Register
+                Create your free account →
+              </Link>
+
+            </div>
+
+
+            <div className="grid grid-cols-2 gap-4">
+
+              {[
+                ["🎓", "Board Exams", "Stay on top of your syllabus."],
+                ["⚡", "MHT-CET", "Practice smarter for CET."],
+                ["🚀", "JEE", "Build consistent preparation."],
+                ["🩺", "NEET", "Organize your revision."],
+              ].map(([icon, title, description]) => (
+
+                <div
+                  key={title}
+                  className="rounded-2xl border border-slate-800 bg-[#11151D] p-5"
+                >
+
+                  <div className="text-2xl">
+                    {icon}
+                  </div>
+
+                  <h3 className="font-bold mt-4">
+                    {title}
+                  </h3>
+
+                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                    {description}
+                  </p>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        {/* =====================================================
+            FINAL CTA
+        ===================================================== */}
+
+        <section className="px-6 py-24">
+
+          <div className="relative max-w-5xl mx-auto overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-600/20 via-[#151922] to-[#11151D] p-10 md:p-16 text-center">
+
+            <div className="absolute w-72 h-72 bg-indigo-600/20 blur-[100px] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+
+            <div className="relative">
+
+              <h2
+                className="text-3xl md:text-5xl font-bold"
+                style={{ fontFamily: "'Sora', sans-serif" }}
+              >
+                Ready to study smarter?
+              </h2>
+
+              <p className="text-slate-400 mt-5 max-w-xl mx-auto">
+                Create your ExamAce AI account and start building a more
+                organized exam preparation routine today.
+              </p>
+
+              <Link
+                to="/register"
+                className="inline-flex mt-8 bg-indigo-600 hover:bg-indigo-500 px-8 py-3.5 rounded-xl font-semibold transition shadow-xl shadow-indigo-600/20"
+              >
+                Get started free →
               </Link>
 
             </div>
 
           </div>
+
+        </section>
+
+      </main>
+
+
+      {/* =====================================================
+          FOOTER
+      ===================================================== */}
+
+      <footer className="border-t border-slate-800 px-6 py-8">
+
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+
+          <div className="flex items-center gap-2">
+
+            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+              <span className="text-xs font-bold">✓</span>
+            </div>
+
+            <span className="text-sm font-semibold">
+              ExamAce<span className="text-indigo-500">AI</span>
+            </span>
+
+          </div>
+
+          <p className="text-xs text-slate-500 text-center">
+            © {new Date().getFullYear()} ExamAce AI. All rights reserved.
+          </p>
 
         </div>
 
       </footer>
-
-    </div>
-  );
-}
-
-
-// ============================================================
-// FEATURE CARD
-// ============================================================
-
-function FeatureCard({
-  icon,
-  title,
-  description,
-}) {
-  return (
-    <div className="group bg-[#151922] border border-slate-800 rounded-2xl p-6 hover:border-indigo-500/30 hover:bg-[#181D28] transition">
-
-      <div className="w-12 h-12 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-2xl group-hover:scale-105 transition">
-        {icon}
-      </div>
-
-      <h3 className="text-lg font-semibold mt-5">
-        {title}
-      </h3>
-
-      <p className="text-slate-400 mt-2 leading-relaxed text-sm">
-        {description}
-      </p>
-
-    </div>
-  );
-}
-
-
-// ============================================================
-// STEP
-// ============================================================
-
-function Step({
-  number,
-  icon,
-  title,
-  description,
-}) {
-  return (
-    <div className="relative text-center">
-
-      <div className="text-xs font-bold text-indigo-400 tracking-widest">
-        {number}
-      </div>
-
-      <div className="w-16 h-16 mx-auto mt-4 rounded-2xl bg-[#151922] border border-slate-800 flex items-center justify-center text-2xl">
-        {icon}
-      </div>
-
-      <h3 className="text-lg font-semibold mt-5">
-        {title}
-      </h3>
-
-      <p className="text-sm text-slate-400 mt-2 leading-relaxed max-w-xs mx-auto">
-        {description}
-      </p>
-
-    </div>
-  );
-}
-
-
-// ============================================================
-// AUDIENCE CARD
-// ============================================================
-
-function AudienceCard({
-  icon,
-  title,
-  description,
-}) {
-  return (
-    <div className="flex gap-4 p-5 rounded-2xl bg-[#151922] border border-slate-800">
-
-      <div className="w-12 h-12 flex-shrink-0 rounded-xl bg-indigo-600/10 flex items-center justify-center text-xl">
-        {icon}
-      </div>
-
-      <div>
-
-        <h3 className="font-semibold">
-          {title}
-        </h3>
-
-        <p className="text-sm text-slate-400 mt-1 leading-relaxed">
-          {description}
-        </p>
-
-      </div>
 
     </div>
   );
