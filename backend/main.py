@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import random
 import json
 import secrets
@@ -39,8 +39,7 @@ from auth import (
     decode_access_token,
 )
 
-# NEW: email sending helper
-from email_utils import send_verification_email
+from email_utils import send_otp_email
 
 
 # ============================================================
@@ -158,6 +157,18 @@ class ManualTaskRequest(BaseModel):
         ge=0.5,
         le=24
     )
+
+
+class VerifyOTPRequest(BaseModel):
+
+    email: str
+
+    otp: str
+
+
+class ResendOTPRequest(BaseModel):
+
+    email: str
 
 
 # ============================================================
@@ -1427,8 +1438,9 @@ def register(
 
         }
 
-    # NEW: generate a random verification token
-    verification_token = secrets.token_urlsafe(32)
+    otp_code = f"{random.randint(0, 999999):06d}"
+
+    otp_expiry = datetime.utcnow() + timedelta(minutes=10)
 
     new_user = User(
 
@@ -1440,10 +1452,11 @@ def register(
             user.password
         ),
 
-        # NEW: unverified by default, store the token
         is_verified=False,
 
-        verification_token=verification_token,
+        otp_code=otp_code,
+
+        otp_expires_at=otp_expiry,
 
     )
 
@@ -1454,16 +1467,15 @@ def register(
 
     db.refresh(new_user)
 
-    # NEW: send the verification email
-    email_sent = send_verification_email(
+    email_sent = send_otp_email(
         new_user.email,
-        verification_token
+        otp_code
     )
 
     return {
 
         "message":
-            "User created. Please check your email to verify your account."
+            "User created. Please check your email for a verification code."
             if email_sent
             else "User created, but the verification email could not be sent. Please contact support.",
 
@@ -1474,13 +1486,13 @@ def register(
 
 
 # ============================================================
-# VERIFY EMAIL
+# VERIFY OTP
 # ============================================================
 
-@app.get("/verify-email")
-def verify_email(
+@app.post("/verify-otp")
+def verify_otp(
 
-    token: str,
+    data: VerifyOTPRequest,
 
     db: Session = Depends(get_db)
 
@@ -1492,8 +1504,8 @@ def verify_email(
 
         .filter(
 
-            User.verification_token ==
-            token
+            User.email ==
+            data.email
 
         )
 
@@ -1505,15 +1517,46 @@ def verify_email(
 
         raise HTTPException(
 
+            status_code=404,
+
+            detail="User not found."
+
+        )
+
+    if user.is_verified:
+
+        return {
+
+            "message":
+                "Email already verified."
+
+        }
+
+    if not user.otp_code or user.otp_code != data.otp:
+
+        raise HTTPException(
+
             status_code=400,
 
-            detail="Invalid or expired verification link."
+            detail="Invalid verification code."
+
+        )
+
+    if user.otp_expires_at and datetime.utcnow() > user.otp_expires_at:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail="Verification code has expired. Please request a new one."
 
         )
 
     user.is_verified = True
 
-    user.verification_token = None
+    user.otp_code = None
+
+    user.otp_expires_at = None
 
     db.commit()
 
@@ -1521,6 +1564,76 @@ def verify_email(
 
         "message":
             "Email verified successfully! You can now log in."
+
+    }
+
+
+# ============================================================
+# RESEND OTP
+# ============================================================
+
+@app.post("/resend-otp")
+def resend_otp(
+
+    data: ResendOTPRequest,
+
+    db: Session = Depends(get_db)
+
+):
+
+    user = (
+
+        db.query(User)
+
+        .filter(
+
+            User.email ==
+            data.email
+
+        )
+
+        .first()
+
+    )
+
+    if not user:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="User not found."
+
+        )
+
+    if user.is_verified:
+
+        return {
+
+            "message":
+                "Email already verified."
+
+        }
+
+    otp_code = f"{random.randint(0, 999999):06d}"
+
+    user.otp_code = otp_code
+
+    user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+    db.commit()
+
+    email_sent = send_otp_email(
+        user.email,
+        otp_code
+    )
+
+    return {
+
+        "message":
+            "A new verification code has been sent."
+            if email_sent
+            else "Could not send verification code. Please try again."
 
     }
 
@@ -1581,13 +1694,18 @@ def login(
 
         }
 
-    # NEW: block login if email isn't verified yet
     if not db_user.is_verified:
 
         return {
 
             "error":
-                "Please verify your email before logging in. Check your inbox for the verification link."
+                "Please verify your email before logging in.",
+
+            "unverified":
+                True,
+
+            "email":
+                db_user.email
 
         }
 
