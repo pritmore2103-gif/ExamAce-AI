@@ -8,7 +8,6 @@ import Notes from "./pages/Notes";
 import Chat from "./pages/Chat";
 import MCQGenerator from "./pages/MCQGenerator";
 import Quiz from "./pages/Quiz";
-import VerifyEmail from "./pages/VerifyEmail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -19,7 +18,6 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/verify" element={<VerifyEmail />} />
           <Route
             path="/dashboard"
             element={
