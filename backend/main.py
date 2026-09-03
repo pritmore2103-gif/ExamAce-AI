@@ -1,15 +1,24 @@
 from datetime import datetime, timedelta
 import random
 import json
-import secrets
 
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, Depends, Header, HTTPException
+
+from fastapi import (
+    FastAPI,
+    Depends,
+    Header,
+    HTTPException
+)
+
 from fastapi.middleware.cors import CORSMiddleware
 
 from sqlalchemy.orm import Session
 
-from database import engine, SessionLocal
+from database import (
+    engine,
+    SessionLocal
+)
 
 from models import (
     Base,
@@ -17,6 +26,19 @@ from models import (
     Note,
     StudyPlan,
     StudyTask,
+)
+
+# NEW
+from subscription import (
+    Subscription,
+    AIUsage
+)
+
+from subscription_service import (
+    check_quota,
+    get_user_plan,
+    get_usage_summary,
+    record_ai_usage
 )
 
 from schemas import (
@@ -30,7 +52,9 @@ from ai import (
     generate_study_plan,
 )
 
-from ai_notes import generate_notes
+from ai_notes import (
+    generate_notes
+)
 
 from auth import (
     hash_password,
@@ -394,7 +418,9 @@ def get_notes(
 
 @app.post("/generate-mcq")
 def generate_mcq(
-    data: MCQRequest
+    data: MCQRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     if not data.topic.strip():
@@ -415,32 +441,75 @@ def generate_mcq(
             detail="Invalid difficulty."
         )
 
+    # ========================================================
+    # CHECK QUOTA BEFORE GEMINI
+    # ========================================================
+
+    check_quota(
+        db=db,
+        user_id=current_user.id,
+        feature="mcq",
+        units=data.count
+    )
+
     try:
 
         result = generate_mcqs(
-
             topic=data.topic.strip(),
-
             difficulty=data.difficulty,
-
             count=data.count,
-
             subject=data.subject,
-
             exam=data.exam
-
         )
 
-        return result
+        # Supports the updated ai.py:
+        # (content, input_tokens, output_tokens)
+        if isinstance(result, tuple):
+
+            result_data = result[0]
+
+            input_tokens = (
+                result[1]
+                if len(result) > 1
+                else 0
+            )
+
+            output_tokens = (
+                result[2]
+                if len(result) > 2
+                else 0
+            )
+
+        else:
+
+            result_data = result
+            input_tokens = 0
+            output_tokens = 0
+
+        # ====================================================
+        # RECORD GEMINI USAGE
+        # ====================================================
+
+        record_ai_usage(
+            db=db,
+            user_id=current_user.id,
+            feature="mcq",
+            units=data.count,
+            model="gemini-2.5-flash",
+            input_tokens=input_tokens or 0,
+            output_tokens=output_tokens or 0
+        )
+
+        return result_data
+
+    except HTTPException:
+        raise
 
     except ValueError as error:
 
         raise HTTPException(
-
             status_code=500,
-
             detail=str(error)
-
         )
 
     except Exception as error:
@@ -451,11 +520,8 @@ def generate_mcq(
         )
 
         raise HTTPException(
-
             status_code=500,
-
             detail="Failed to generate MCQs."
-
         )
 
 
@@ -466,10 +532,8 @@ def generate_mcq(
 @app.post("/generate-plan")
 def generate_plan(
     data: StudyPlanRequest,
-
-    current_user: User = Depends(
-        get_current_user
-    )
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     if data.days_remaining <= 0:
@@ -493,28 +557,84 @@ def generate_plan(
             detail="At least one subject is required."
         )
 
-    plan = generate_study_plan(
+    # ========================================================
+    # CHECK MONTHLY PLANNER QUOTA BEFORE GEMINI
+    # ========================================================
 
-        data.exam,
-
-        data.today,
-
-        data.exam_date,
-
-        data.days_remaining,
-
-        data.hours_per_day,
-
-        data.subjects,
-
+    check_quota(
+        db=db,
+        user_id=current_user.id,
+        feature="planner",
+        units=1
     )
 
-    return {
+    try:
 
-        "content":
-            plan
+        plan = generate_study_plan(
+            data.exam,
+            data.today,
+            data.exam_date,
+            data.days_remaining,
+            data.hours_per_day,
+            data.subjects,
+        )
 
-    }
+        # Supports the updated ai.py:
+        # (content, input_tokens, output_tokens)
+        if isinstance(plan, tuple):
+
+            plan_content = plan[0]
+
+            input_tokens = (
+                plan[1]
+                if len(plan) > 1
+                else 0
+            )
+
+            output_tokens = (
+                plan[2]
+                if len(plan) > 2
+                else 0
+            )
+
+        else:
+
+            plan_content = plan
+            input_tokens = 0
+            output_tokens = 0
+
+        # ====================================================
+        # RECORD GEMINI USAGE
+        # ====================================================
+
+        record_ai_usage(
+            db=db,
+            user_id=current_user.id,
+            feature="planner",
+            units=1,
+            model="gemini-2.5-flash",
+            input_tokens=input_tokens or 0,
+            output_tokens=output_tokens or 0
+        )
+
+        return {
+            "content": plan_content
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+
+        print(
+            "Study plan generation error:",
+            error
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate study plan."
+        )
 
 
 # ============================================================
@@ -1378,24 +1498,154 @@ def generate_quiz(
 
 @app.post("/generate-notes")
 def notes_generator(
-
-    data: NotesRequest
-
+    data: NotesRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
-    notes = generate_notes(
+    if not data.topic.strip():
 
-        data.topic
+        raise HTTPException(
+            status_code=400,
+            detail="Topic is required."
+        )
 
+    # ========================================================
+    # CHECK DAILY NOTES QUOTA BEFORE GEMINI
+    # ========================================================
+
+    check_quota(
+        db=db,
+        user_id=current_user.id,
+        feature="notes",
+        units=1
     )
 
+    try:
+
+        result = generate_notes(
+            data.topic.strip()
+        )
+
+        # Supports the updated ai_notes.py:
+        # (content, input_tokens, output_tokens)
+        if isinstance(result, tuple):
+
+            content = result[0]
+
+            input_tokens = (
+                result[1]
+                if len(result) > 1
+                else 0
+            )
+
+            output_tokens = (
+                result[2]
+                if len(result) > 2
+                else 0
+            )
+
+        else:
+
+            content = result
+            input_tokens = 0
+            output_tokens = 0
+
+        # ====================================================
+        # RECORD GEMINI USAGE
+        # ====================================================
+
+        record_ai_usage(
+            db=db,
+            user_id=current_user.id,
+            feature="notes",
+            units=1,
+            model="gemini-2.5-flash",
+            input_tokens=input_tokens or 0,
+            output_tokens=output_tokens or 0
+        )
+
+        return {
+            "content": content
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+
+        print(
+            "Notes generation error:",
+            error
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate notes."
+        )
+
+
+# ============================================================
+# SUBSCRIPTION
+# ============================================================
+
+@app.get("/subscription")
+def subscription_info(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    subscription = (
+        db.query(Subscription)
+        .filter(
+            Subscription.user_id ==
+            current_user.id
+        )
+        .first()
+    )
+
+    if not subscription:
+
+        subscription = Subscription(
+            user_id=current_user.id,
+            plan="free",
+            status="active"
+        )
+
+        db.add(subscription)
+        db.commit()
+        db.refresh(subscription)
+
+    # Let subscription_service handle expiry.
+    plan = get_user_plan(
+        db,
+        current_user.id
+    )
+
+    db.refresh(subscription)
 
     return {
-
-        "content":
-            notes
-
+        "plan": plan,
+        "status": subscription.status,
+        "started_at": subscription.started_at,
+        "expires_at": subscription.expires_at
     }
+
+
+# ============================================================
+# AI USAGE
+# ============================================================
+
+@app.get("/usage")
+def usage_info(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    return get_usage_summary(
+        db,
+        current_user.id
+    )
 
 
 # ============================================================
@@ -1466,6 +1716,20 @@ def register(
     db.commit()
 
     db.refresh(new_user)
+
+    # ========================================================
+    # CREATE FREE SUBSCRIPTION
+    # ========================================================
+
+    subscription = Subscription(
+        user_id=new_user.id,
+        plan="free",
+        status="active"
+    )
+
+    db.add(subscription)
+
+    db.commit()
 
     email_sent = send_otp_email(
         new_user.email,
@@ -1635,6 +1899,64 @@ def resend_otp(
             if email_sent
             else "Could not send verification code. Please try again."
 
+    }
+
+
+# ============================================================
+# ADMIN: ACTIVATE PRO
+# ============================================================
+#
+# TEMPORARY ADMIN ENDPOINT
+#
+# IMPORTANT:
+# Add real admin authentication before production.
+# Do NOT expose this endpoint to normal users.
+#
+# ============================================================
+
+@app.post("/admin/activate-pro/{user_id}")
+def activate_pro(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    subscription = (
+        db.query(Subscription)
+        .filter(
+            Subscription.user_id ==
+            user_id
+        )
+        .first()
+    )
+
+    if not subscription:
+
+        subscription = Subscription(
+            user_id=user_id,
+            plan="free",
+            status="active"
+        )
+
+        db.add(subscription)
+
+    subscription.plan = "pro"
+    subscription.status = "active"
+    subscription.started_at = datetime.utcnow()
+
+    # Temporary 30-day Pro subscription.
+    subscription.expires_at = (
+        datetime.utcnow()
+        + timedelta(days=30)
+    )
+
+    db.commit()
+    db.refresh(subscription)
+
+    return {
+        "message": "Pro activated",
+        "user_id": user_id,
+        "plan": subscription.plan,
+        "expires_at": subscription.expires_at
     }
 
 
