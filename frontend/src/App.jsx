@@ -18,6 +18,14 @@ import ScrollToTop from "./components/ScrollToTop";
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
+
+      <Routes>
+        {/* your routes */}
+      </Routes>
+    </BrowserRouter>
+    
+    <BrowserRouter>
       <div className="min-h-screen bg-slate-950 text-white">
         <Routes>
           <Route path="/" element={<Home />} />
