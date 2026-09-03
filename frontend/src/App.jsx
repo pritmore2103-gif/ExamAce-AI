@@ -12,6 +12,7 @@ import Pricing from "./pages/Pricing";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
+import ScrollToTop from "./components/ScrollToTop";
 
 
 function App() {
