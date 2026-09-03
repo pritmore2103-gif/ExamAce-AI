@@ -14,31 +14,22 @@ import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
 import ScrollToTop from "./components/ScrollToTop";
 
-
 function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-
-      <Routes>
-        {/* your routes */}
-      </Routes>
-    </BrowserRouter>
-    
-    <BrowserRouter>
-      <div className="min-h-screen bg-slate-950 text-white">
+      <div className="min-h-screen bg-[#0B0E14] text-white">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/" element={<Home />} />
-
           <Route path="/about" element={<About />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/contact" element={<Contact />} />
-          
+
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
           <Route
             path="/dashboard"
             element={
