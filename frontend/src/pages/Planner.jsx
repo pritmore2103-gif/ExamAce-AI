@@ -180,125 +180,187 @@ export default function Planner() {
   };
 
   const saveAIPlan = async (plan) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Please login first.");
+  const token = localStorage.getItem("token");
 
-    setSavingPlan(true);
+  if (!token) {
+    throw new Error("Please login first.");
+  }
+
+  if (!plan || typeof plan !== "object") {
+    throw new Error("Invalid study plan.");
+  }
+
+  setSavingPlan(true);
+
+  try {
+    const response = await fetch(`${API_URL}/save-plan`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        plan_data: plan,
+      }),
+    });
+
+    const text = await response.text();
+
+    let data;
 
     try {
-      const saveResponse = await fetch(`${API_URL}/save-plan`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({ plan_data: plan }),
-      });
-
-      if (!saveResponse.ok) {
-        const text = await saveResponse.text();
-        throw new Error(`Failed to save study plan: ${text}`);
-      }
-
-      const saved = await saveResponse.json();
-      setPlanId(saved.plan_id || null);
-
-      // The original backend stores the plan JSON but does not automatically
-      // create StudyTask rows. Create those rows here so every AI task gets a
-      // persistent ID and can be checked off after reload.
-      const createdTasks = [];
-
-      for (const day of plan.daily_plan || []) {
-        for (const task of day.tasks || []) {
-          const taskResponse = await fetch(`${API_URL}/study-task`, {
-            method: "POST",
-            headers: authHeaders(),
-            body: JSON.stringify({
-              day: Number(day.day || 0),
-              date: day.date || "",
-              subject: task.subject || "",
-              topic: task.topic || "",
-              activity: task.activity || "",
-              hours: Number(task.hours || 0),
-            }),
-          });
-
-          if (!taskResponse.ok) {
-            const text = await taskResponse.text();
-            throw new Error(`Plan saved, but a task could not be saved: ${text}`);
-          }
-
-          const taskData = await taskResponse.json();
-          if (taskData.task) createdTasks.push(taskData.task);
-          else if (taskData.task_id) createdTasks.push({ ...task, id: taskData.task_id, day: day.day, date: day.date });
-        }
-      }
-
-      const planWithIds = attachSavedTaskIds(plan, createdTasks);
-      setAiPlan(planWithIds);
-      setTasks(createdTasks.map((task) => ({
-        id: task.id,
-        text: task.topic || "",
-        subject: task.subject || "",
-        date: task.date || "",
-        hours: Number(task.hours || 0),
-        activity: task.activity || "",
-        completed: Boolean(task.completed),
-        aiGenerated: true,
-      })));
-
-      setSuccess("Study plan saved successfully!");
-    } finally {
-      setSavingPlan(false);
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error(
+        `Failed to save study plan. Server response: ${text}`
+      );
     }
-  };
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail ||
+        data.message ||
+        "Failed to save study plan."
+      );
+    }
+
+    if (!data.plan_id) {
+      throw new Error(
+        "Study plan was not saved correctly: no plan ID returned."
+      );
+    }
+
+    setPlanId(data.plan_id);
+
+    /*
+     * IMPORTANT:
+     *
+     * Do NOT create StudyTask rows here.
+     *
+     * The backend /save-plan endpoint should create the
+     * StudyTask records.
+     *
+     * Reload the saved plan from /my-plan so React receives
+     * the real database task IDs.
+     */
+
+    await loadSavedPlan();
+
+    setSuccess("Study plan saved successfully!");
+
+  } catch (err) {
+
+    console.error("Save study plan error:", err);
+
+    throw err;
+
+  } finally {
+
+    setSavingPlan(false);
+  }
+};
 
   const generateAIPlan = async () => {
-    if (!validate()) return;
+  if (!validate()) return;
+
+  try {
+    setLoadingAI(true);
+    setError("");
+    setSuccess("");
+
+    const response = await fetch(`${API_URL}/generate-plan`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        exam,
+        today: todayISO,
+        exam_date: examDate,
+        days_remaining: daysRemaining,
+        hours_per_day: Number(hours),
+        subjects,
+      }),
+    });
+
+    const text = await response.text();
+
+    let data;
 
     try {
-      setLoadingAI(true);
-      setError("");
-      setSuccess("");
-
-      const response = await fetch(`${API_URL}/generate-plan`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({
-          exam,
-          today: todayISO,
-          exam_date: examDate,
-          days_remaining: daysRemaining,
-          hours_per_day: Number(hours),
-          subjects,
-        }),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        let detail = text;
-        try {
-          detail = JSON.parse(text).detail || text;
-        } catch {}
-        throw new Error(detail || "Failed to generate study plan.");
-      }
-
-      const data = await response.json();
-      const parsed = typeof data.content === "string" ? JSON.parse(data.content) : data.content;
-
-      if (!parsed || typeof parsed !== "object") {
-        throw new Error("AI returned an invalid study plan.");
-      }
-
-      if (!Array.isArray(parsed.daily_plan)) parsed.daily_plan = [];
-
-      setAiPlan(parsed);
-      setPlanCreated(true);
-      await saveAIPlan(parsed);
-    } catch (err) {
-      console.error("AI Planner Error:", err);
-      setError(err.message || "Failed to generate study plan.");
-    } finally {
-      setLoadingAI(false);
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error("Backend returned an invalid response.");
     }
-  };
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail ||
+        data.message ||
+        "Failed to generate study plan."
+      );
+    }
+
+    let rawPlan = data.content;
+
+    if (typeof rawPlan === "string") {
+
+      rawPlan = rawPlan
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+
+      try {
+        rawPlan = JSON.parse(rawPlan);
+      } catch (error) {
+
+        console.error(
+          "Invalid AI plan JSON:",
+          rawPlan
+        );
+
+        throw new Error(
+          "AI returned an invalid study plan."
+        );
+      }
+    }
+
+    if (
+      !rawPlan ||
+      typeof rawPlan !== "object" ||
+      Array.isArray(rawPlan)
+    ) {
+      throw new Error(
+        "AI returned an invalid study plan."
+      );
+    }
+
+    if (!Array.isArray(rawPlan.phases)) {
+      rawPlan.phases = [];
+    }
+
+    if (!Array.isArray(rawPlan.daily_plan)) {
+      rawPlan.daily_plan = [];
+    }
+
+    setAiPlan(rawPlan);
+    setPlanCreated(true);
+
+    await saveAIPlan(rawPlan);
+
+  } catch (err) {
+
+    console.error(
+      "AI Planner Error:",
+      err
+    );
+
+    setError(
+      err.message ||
+      "Failed to generate study plan."
+    );
+
+  } finally {
+
+    setLoadingAI(false);
+  }
+};
 
   const createPlanner = async () => {
     if (!validate()) return;
