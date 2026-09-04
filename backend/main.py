@@ -42,6 +42,16 @@ from email_utils import send_otp_email
 
 
 # ============================================================
+# OTP SECURITY
+# ============================================================
+
+OTP_EXPIRY_MINUTES = 10
+OTP_RESEND_COOLDOWN_SECONDS = 60
+OTP_MAX_RESENDS_PER_HOUR = 5
+OTP_MAX_VERIFY_ATTEMPTS = 5
+
+
+# ============================================================
 # CONFIG
 # ============================================================
 
@@ -867,8 +877,10 @@ def register(
             "error": "Email already exists"
         }
 
-    otp_code = f"{random.randint(0, 999999):06d}"
-    otp_expiry = datetime.utcnow() + timedelta(minutes=10)
+    otp_code = f"{secrets.randbelow(1_000_000):06d}"
+    otp_expiry = datetime.utcnow() + timedelta(
+        minutes=OTP_EXPIRY_MINUTES
+    )
 
     new_user = User(
         name=user.name,
@@ -877,6 +889,10 @@ def register(
         is_verified=False,
         otp_code=otp_code,
         otp_expires_at=otp_expiry,
+        otp_attempts=0,
+        otp_resend_count=0,
+        otp_last_sent_at=datetime.utcnow(),
+        otp_window_started_at=datetime.utcnow(),
     )
 
     db.add(new_user)
@@ -928,6 +944,12 @@ def verify_otp(
             detail="User not found."
         )
 
+    if user.otp_attempts >= OTP_MAX_VERIFY_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many incorrect attempts. Please request a new verification code."
+        )
+    
     if user.is_verified:
         return {
             "message": "Email already verified."
@@ -948,6 +970,10 @@ def verify_otp(
     user.is_verified = True
     user.otp_code = None
     user.otp_expires_at = None
+    user.otp_attempts=0
+    user.otp_resend_count=0
+    user.otp_last_sent_at=None
+    user.otp_window_started_at=None
 
     db.commit()
 
@@ -977,6 +1003,26 @@ def resend_otp(
             detail="User not found."
         )
 
+    now = datetime.utcnow()
+
+    if user.otp_last_sent_at:
+
+        elapsed = (
+            now - user.otp_last_sent_at
+        ).total_seconds()
+
+        if elapsed < OTP_RESEND_COOLDOWN_SECONDS:
+
+            remaining = int(
+                OTP_RESEND_COOLDOWN_SECONDS - elapsed
+            )
+
+            raise HTTPException(
+                status_code=429,
+                detail=f"Please wait {remaining} seconds before requesting another code."
+            )
+    
+    
     if user.is_verified:
         return {
             "message": "Email already verified."
@@ -992,6 +1038,27 @@ def resend_otp(
         user.email,
         otp_code
     )
+
+    if not user.otp_window_started_at:
+
+        user.otp_window_started_at = now
+        user.otp_resend_count = 0
+
+    elif (
+        now - user.otp_window_started_at
+    ).total_seconds() >= 3600:
+
+        user.otp_window_started_at = now
+        user.otp_resend_count = 0
+
+
+    if user.otp_resend_count >= OTP_MAX_RESENDS_PER_HOUR:
+
+        raise HTTPException(
+            status_code=429,
+            detail="Too many verification codes requested. Please try again later."
+        )
+    
 
     return {
         "message": (
