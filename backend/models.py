@@ -49,12 +49,42 @@ class User(Base):
         default=False
     )
 
+    # Admin flag. Existing users remain non-admin by default.
+    is_admin = Column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    # OTP state and abuse protection.
     otp_code = Column(
         String,
         nullable=True
     )
 
     otp_expires_at = Column(
+        DateTime,
+        nullable=True
+    )
+
+    otp_attempts = Column(
+        Integer,
+        default=0,
+        nullable=False
+    )
+
+    otp_resend_count = Column(
+        Integer,
+        default=0,
+        nullable=False
+    )
+
+    otp_last_sent_at = Column(
+        DateTime,
+        nullable=True
+    )
+
+    otp_window_started_at = Column(
         DateTime,
         nullable=True
     )
@@ -225,20 +255,12 @@ class SavedQuiz(Base):
         index=True
     )
 
-    # --------------------------------------------------------
-    # Owner
-    # --------------------------------------------------------
-
     user_id = Column(
         Integer,
         ForeignKey("users.id"),
         nullable=False,
         index=True
     )
-
-    # --------------------------------------------------------
-    # Quiz information
-    # --------------------------------------------------------
 
     exam = Column(
         String,
@@ -265,25 +287,10 @@ class SavedQuiz(Base):
         default=0
     )
 
-    # --------------------------------------------------------
-    # Quiz data
-    #
-    # Stores:
-    # questions
-    # options
-    # correct answers
-    # explanations
-    # selected answers
-    # --------------------------------------------------------
-
     quiz_data = Column(
         Text,
         nullable=False
     )
-
-    # --------------------------------------------------------
-    # Result
-    # --------------------------------------------------------
 
     score = Column(
         Integer,
@@ -294,10 +301,6 @@ class SavedQuiz(Base):
         Float,
         default=0
     )
-
-    # --------------------------------------------------------
-    # Created date
-    # --------------------------------------------------------
 
     created_at = Column(
         DateTime,
