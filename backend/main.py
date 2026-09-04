@@ -334,7 +334,7 @@ def generate_mcq(
             detail="Difficulty is required."
         )
 
-    check_quota(
+    reserve_quota(
         db=db,
         user_id=current_user.id,
         feature="mcq",
@@ -374,6 +374,13 @@ def generate_mcq(
     except HTTPException:
         raise
     except Exception as error:
+        release_quota(
+            db=db,
+            user_id=current_user.id,
+            feature="mcq",
+            units=data.count
+        )
+
         print("MCQ generation error:", error)
         raise HTTPException(
             status_code=500,
@@ -409,7 +416,7 @@ def generate_plan(
             detail="At least one subject is required."
         )
 
-    check_quota(
+    reserve_quota(
         db=db,
         user_id=current_user.id,
         feature="planner",
@@ -452,6 +459,12 @@ def generate_plan(
     except HTTPException:
         raise
     except Exception as error:
+        release_quota(
+            db=db,
+            user_id=current_user.id,
+            feature="planner",
+            units=1
+        )
         print("Study plan generation error:", error)
         raise HTTPException(
             status_code=500,
@@ -784,7 +797,7 @@ def notes_generator(
             detail="Topic is required."
         )
 
-    check_quota(
+    reserve_quota(
         db=db,
         user_id=current_user.id,
         feature="notes",
@@ -820,6 +833,12 @@ def notes_generator(
     except HTTPException:
         raise
     except Exception as error:
+        release_quota(
+            db=db,
+            user_id=current_user.id,
+            feature="notes",
+            units=1,
+        )
         print("Notes generation error:", error)
         raise HTTPException(
             status_code=500,
