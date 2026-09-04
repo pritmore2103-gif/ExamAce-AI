@@ -31,7 +31,9 @@ from subscription_service import (
     check_quota,
     get_user_plan,
     get_usage_summary,
-    record_ai_usage
+    record_ai_usage,
+    reserve_quota,
+    release_quota,
 )
 
 from schemas import UserCreate, UserLogin, NoteCreate
@@ -791,12 +793,14 @@ def notes_generator(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     if not data.topic.strip():
         raise HTTPException(
             status_code=400,
             detail="Topic is required."
         )
 
+    # Check daily Notes quota
     reserve_quota(
         db=db,
         user_id=current_user.id,
@@ -805,25 +809,42 @@ def notes_generator(
     )
 
     try:
-        result = generate_notes(data.topic.strip())
+
+        result = generate_notes(
+            data.topic.strip()
+        )
 
         if isinstance(result, tuple):
+
             content = result[0]
-            input_tokens = result[1] if len(result) > 1 else 0
-            output_tokens = result[2] if len(result) > 2 else 0
+
+            input_tokens = (
+                result[1]
+                if len(result) > 1
+                else 0
+            )
+
+            output_tokens = (
+                result[2]
+                if len(result) > 2
+                else 0
+            )
+
         else:
+
             content = result
             input_tokens = 0
             output_tokens = 0
 
+        # Record successful Gemini usage
         record_ai_usage(
             db=db,
             user_id=current_user.id,
             feature="notes",
             units=1,
             model="gemini-2.5-flash",
-            input_tokens=input_tokens or 0,
-            output_tokens=output_tokens or 0
+            input_tokens=input_tokens,
+            output_tokens=output_tokens
         )
 
         return {
@@ -832,14 +853,21 @@ def notes_generator(
 
     except HTTPException:
         raise
+
     except Exception as error:
+
         release_quota(
             db=db,
             user_id=current_user.id,
             feature="notes",
-            units=1,
+            units=1
         )
-        print("Notes generation error:", error)
+
+        print(
+            "Notes generation error:",
+            error
+        )
+
         raise HTTPException(
             status_code=500,
             detail="Failed to generate notes."
