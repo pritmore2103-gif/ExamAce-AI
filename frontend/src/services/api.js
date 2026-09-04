@@ -170,6 +170,9 @@ export async function generateMCQ(
   exam = "General"
 ) {
 
+  const token =
+    localStorage.getItem("token");
+
   const response = await fetch(
     `${API_URL}/generate-mcq`,
     {
@@ -177,24 +180,18 @@ export async function generateMCQ(
 
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
 
       body: JSON.stringify({
-
         topic,
-
         difficulty,
-
         count,
-
         subject,
-
         exam,
-
       }),
     }
   );
-
 
   if (!response.ok) {
 
@@ -207,24 +204,18 @@ export async function generateMCQ(
         await response.json();
 
       if (errorData.detail) {
-        errorMessage =
-          errorData.detail;
+        errorMessage = errorData.detail;
       }
 
     } catch (error) {
-
       console.error(
         "Could not read error response:",
         error
       );
-
     }
 
-    throw new Error(
-      errorMessage
-    );
+    throw new Error(errorMessage);
   }
-
 
   return response.json();
 }
@@ -238,7 +229,6 @@ export async function saveQuiz(data) {
 
   const token =
     localStorage.getItem("token");
-
 
   const response = await fetch(
     `${API_URL}/save-quiz`,
@@ -256,7 +246,6 @@ export async function saveQuiz(data) {
     }
   );
 
-
   if (!response.ok) {
 
     let errorMessage =
@@ -268,26 +257,18 @@ export async function saveQuiz(data) {
         await response.json();
 
       if (errorData.detail) {
-
-        errorMessage =
-          errorData.detail;
-
+        errorMessage = errorData.detail;
       }
 
     } catch (error) {
-
       console.error(
         "Could not read save quiz error:",
         error
       );
-
     }
 
-    throw new Error(
-      errorMessage
-    );
+    throw new Error(errorMessage);
   }
-
 
   return response.json();
 }
@@ -302,7 +283,6 @@ export async function getSavedQuizzes() {
   const token =
     localStorage.getItem("token");
 
-
   const response = await fetch(
     `${API_URL}/saved-quizzes`,
     {
@@ -315,38 +295,25 @@ export async function getSavedQuizzes() {
     }
   );
 
-
   if (!response.ok) {
 
     let errorMessage =
       "Failed to load saved quizzes.";
 
     try {
-
-      const errorData =
-        await response.json();
-
+      const errorData = await response.json();
       if (errorData.detail) {
-
-        errorMessage =
-          errorData.detail;
-
+        errorMessage = errorData.detail;
       }
-
     } catch (error) {
-
       console.error(
         "Could not read saved quizzes error:",
         error
       );
-
     }
 
-    throw new Error(
-      errorMessage
-    );
+    throw new Error(errorMessage);
   }
-
 
   return response.json();
 }
@@ -356,13 +323,10 @@ export async function getSavedQuizzes() {
 // GET ONE SAVED QUIZ
 // ============================================================
 
-export async function getSavedQuiz(
-  quizId
-) {
+export async function getSavedQuiz(quizId) {
 
   const token =
     localStorage.getItem("token");
-
 
   const response = await fetch(
     `${API_URL}/saved-quizzes/${quizId}`,
@@ -376,38 +340,25 @@ export async function getSavedQuiz(
     }
   );
 
-
   if (!response.ok) {
 
     let errorMessage =
       "Failed to load quiz.";
 
     try {
-
-      const errorData =
-        await response.json();
-
+      const errorData = await response.json();
       if (errorData.detail) {
-
-        errorMessage =
-          errorData.detail;
-
+        errorMessage = errorData.detail;
       }
-
     } catch (error) {
-
       console.error(
         "Could not read quiz error:",
         error
       );
-
     }
 
-    throw new Error(
-      errorMessage
-    );
+    throw new Error(errorMessage);
   }
-
 
   return response.json();
 }
@@ -417,13 +368,10 @@ export async function getSavedQuiz(
 // DELETE SAVED QUIZ
 // ============================================================
 
-export async function deleteSavedQuiz(
-  quizId
-) {
+export async function deleteSavedQuiz(quizId) {
 
   const token =
     localStorage.getItem("token");
-
 
   const response = await fetch(
     `${API_URL}/saved-quizzes/${quizId}`,
@@ -437,38 +385,25 @@ export async function deleteSavedQuiz(
     }
   );
 
-
   if (!response.ok) {
 
     let errorMessage =
       "Failed to delete quiz.";
 
     try {
-
-      const errorData =
-        await response.json();
-
+      const errorData = await response.json();
       if (errorData.detail) {
-
-        errorMessage =
-          errorData.detail;
-
+        errorMessage = errorData.detail;
       }
-
     } catch (error) {
-
       console.error(
         "Could not read delete quiz error:",
         error
       );
-
     }
 
-    throw new Error(
-      errorMessage
-    );
+    throw new Error(errorMessage);
   }
-
 
   return response.json();
 }
@@ -478,9 +413,10 @@ export async function deleteSavedQuiz(
 // AI NOTES
 // ============================================================
 
-export async function generateNotes(
-  topic
-) {
+export async function generateNotes(topic) {
+
+  const token =
+    localStorage.getItem("token");
 
   const response = await fetch(
     `${API_URL}/generate-notes`,
@@ -489,6 +425,7 @@ export async function generateNotes(
 
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
 
       body: JSON.stringify({
@@ -496,6 +433,26 @@ export async function generateNotes(
       }),
     }
   );
+
+  if (!response.ok) {
+
+    let errorMessage =
+      "Failed to generate notes.";
+
+    try {
+      const errorData = await response.json();
+      if (errorData.detail) {
+        errorMessage = errorData.detail;
+      }
+    } catch (error) {
+      console.error(
+        "Could not read notes error:",
+        error
+      );
+    }
+
+    throw new Error(errorMessage);
+  }
 
   return response.json();
 }
@@ -510,7 +467,6 @@ export async function getDashboard() {
   const token =
     localStorage.getItem("token");
 
-
   const response = await fetch(
     `${API_URL}/dashboard`,
     {
@@ -521,6 +477,55 @@ export async function getDashboard() {
     }
   );
 
+  if (!response.ok) {
+    throw new Error("Failed to load dashboard.");
+  }
+
+  return response.json();
+}
+
+
+// ============================================================
+// SUBSCRIPTION / USAGE
+// ============================================================
+
+export async function getUsage() {
+
+  const token =
+    localStorage.getItem("token");
+
+  const response = await fetch(
+    `${API_URL}/usage`,
+    {
+      method: "GET",
+
+      headers: {
+        Authorization:
+          `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    let errorMessage = "Failed to load usage.";
+
+    try {
+      const errorData = await response.json();
+      if (errorData.detail) {
+        errorMessage =
+          typeof errorData.detail === "string"
+            ? errorData.detail
+            : "Unable to load usage information.";
+      }
+    } catch (error) {
+      console.error(
+        "Could not read usage error:",
+        error
+      );
+    }
+
+    throw new Error(errorMessage);
+  }
 
   return response.json();
 }
