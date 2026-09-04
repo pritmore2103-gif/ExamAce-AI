@@ -90,18 +90,6 @@ app.add_middleware(
 )
 
 
-def get_current_admin(
-    current_user: User = Depends(get_current_user)
-):
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin access required."
-        )
-
-    return current_user
-
-
 # ============================================================
 # DATABASE
 # ============================================================
@@ -169,6 +157,24 @@ def get_current_user(
         )
 
     return user
+
+
+# ============================================================
+# ADMIN AUTHENTICATION
+#
+# Moved below get_current_user() since it depends on it.
+# ============================================================
+
+def get_current_admin(
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required."
+        )
+
+    return current_user
 
 
 # ============================================================
@@ -859,6 +865,10 @@ def usage_info(
 
 # ============================================================
 # REGISTER
+#
+# Fixed: user + subscription creation is now transactional.
+# If subscription creation fails, the user creation is rolled
+# back too, so we never end up with a user and no subscription.
 # ============================================================
 
 @app.post("/register")
@@ -882,31 +892,40 @@ def register(
         minutes=OTP_EXPIRY_MINUTES
     )
 
-    new_user = User(
-        name=user.name,
-        email=user.email,
-        password=hash_password(user.password),
-        is_verified=False,
-        otp_code=otp_code,
-        otp_expires_at=otp_expiry,
-        otp_attempts=0,
-        otp_resend_count=0,
-        otp_last_sent_at=datetime.utcnow(),
-        otp_window_started_at=datetime.utcnow(),
-    )
+    try:
+        new_user = User(
+            name=user.name,
+            email=user.email,
+            password=hash_password(user.password),
+            is_verified=False,
+            otp_code=otp_code,
+            otp_expires_at=otp_expiry,
+            otp_attempts=0,
+            otp_resend_count=0,
+            otp_last_sent_at=datetime.utcnow(),
+            otp_window_started_at=datetime.utcnow(),
+        )
 
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+        db.add(new_user)
+        db.flush()  # assigns new_user.id without committing yet
 
-    subscription = Subscription(
-        user_id=new_user.id,
-        plan="free",
-        status="active"
-    )
+        subscription = Subscription(
+            user_id=new_user.id,
+            plan="free",
+            status="active"
+        )
 
-    db.add(subscription)
-    db.commit()
+        db.add(subscription)
+        db.commit()
+        db.refresh(new_user)
+
+    except Exception as error:
+        db.rollback()
+        print("Registration error:", error)
+        raise HTTPException(
+            status_code=500,
+            detail="Registration failed. Please try again."
+        )
 
     email_sent = send_otp_email(
         new_user.email,
@@ -925,6 +944,9 @@ def register(
 
 # ============================================================
 # VERIFY OTP
+#
+# Fixed: incorrect attempts now actually increment
+# user.otp_attempts, so the 5-attempt lockout works.
 # ============================================================
 
 @app.post("/verify-otp")
@@ -944,18 +966,21 @@ def verify_otp(
             detail="User not found."
         )
 
-    if user.otp_attempts >= OTP_MAX_VERIFY_ATTEMPTS:
-        raise HTTPException(
-            status_code=429,
-            detail="Too many incorrect attempts. Please request a new verification code."
-        )
-    
     if user.is_verified:
         return {
             "message": "Email already verified."
         }
 
+    if user.otp_attempts >= OTP_MAX_VERIFY_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many incorrect attempts. Please request a new verification code."
+        )
+
     if not user.otp_code or user.otp_code != data.otp:
+        user.otp_attempts += 1
+        db.commit()
+
         raise HTTPException(
             status_code=400,
             detail="Invalid verification code."
@@ -970,10 +995,10 @@ def verify_otp(
     user.is_verified = True
     user.otp_code = None
     user.otp_expires_at = None
-    user.otp_attempts=0
-    user.otp_resend_count=0
-    user.otp_last_sent_at=None
-    user.otp_window_started_at=None
+    user.otp_attempts = 0
+    user.otp_resend_count = 0
+    user.otp_last_sent_at = None
+    user.otp_window_started_at = None
 
     db.commit()
 
@@ -984,6 +1009,11 @@ def verify_otp(
 
 # ============================================================
 # RESEND OTP
+#
+# Fixed: the hourly resend limit is now checked BEFORE a new
+# OTP is generated/saved/sent, and otp_resend_count is actually
+# incremented on every successful resend. Resending also resets
+# otp_attempts, so old wrong guesses don't carry over.
 # ============================================================
 
 @app.post("/resend-otp")
@@ -1003,34 +1033,60 @@ def resend_otp(
             detail="User not found."
         )
 
-    now = datetime.utcnow()
-
-    if user.otp_last_sent_at:
-
-        elapsed = (
-            now - user.otp_last_sent_at
-        ).total_seconds()
-
-        if elapsed < OTP_RESEND_COOLDOWN_SECONDS:
-
-            remaining = int(
-                OTP_RESEND_COOLDOWN_SECONDS - elapsed
-            )
-
-            raise HTTPException(
-                status_code=429,
-                detail=f"Please wait {remaining} seconds before requesting another code."
-            )
-    
-    
     if user.is_verified:
         return {
             "message": "Email already verified."
         }
 
+    now = datetime.utcnow()
+
+    # --------------------------------------------------------
+    # Cooldown check (60s between resends)
+    # --------------------------------------------------------
+
+    if user.otp_last_sent_at:
+        elapsed = (now - user.otp_last_sent_at).total_seconds()
+
+        if elapsed < OTP_RESEND_COOLDOWN_SECONDS:
+            remaining = int(OTP_RESEND_COOLDOWN_SECONDS - elapsed)
+
+            raise HTTPException(
+                status_code=429,
+                detail=f"Please wait {remaining} seconds before requesting another code."
+            )
+
+    # --------------------------------------------------------
+    # Reset the hourly window if it has expired
+    # --------------------------------------------------------
+
+    if (
+        not user.otp_window_started_at
+        or (now - user.otp_window_started_at).total_seconds() >= 3600
+    ):
+        user.otp_window_started_at = now
+        user.otp_resend_count = 0
+
+    # --------------------------------------------------------
+    # Enforce the hourly limit BEFORE generating a new OTP
+    # --------------------------------------------------------
+
+    if user.otp_resend_count >= OTP_MAX_RESENDS_PER_HOUR:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many verification codes requested. Please try again later."
+        )
+
+    # --------------------------------------------------------
+    # Generate and save the new OTP
+    # --------------------------------------------------------
+
     otp_code = f"{secrets.randbelow(1_000_000):06d}"
+
     user.otp_code = otp_code
-    user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    user.otp_expires_at = now + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    user.otp_attempts = 0
+    user.otp_last_sent_at = now
+    user.otp_resend_count += 1
 
     db.commit()
 
@@ -1038,27 +1094,6 @@ def resend_otp(
         user.email,
         otp_code
     )
-
-    if not user.otp_window_started_at:
-
-        user.otp_window_started_at = now
-        user.otp_resend_count = 0
-
-    elif (
-        now - user.otp_window_started_at
-    ).total_seconds() >= 3600:
-
-        user.otp_window_started_at = now
-        user.otp_resend_count = 0
-
-
-    if user.otp_resend_count >= OTP_MAX_RESENDS_PER_HOUR:
-
-        raise HTTPException(
-            status_code=429,
-            detail="Too many verification codes requested. Please try again later."
-        )
-    
 
     return {
         "message": (
