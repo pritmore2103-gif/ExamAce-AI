@@ -1,3 +1,11 @@
+from auth import (
+    hash_password,
+    verify_password,
+    is_legacy_password_hash,
+    create_access_token,
+    decode_access_token,
+)
+
 from datetime import datetime, timedelta
 import os
 import random
@@ -74,6 +82,18 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+
+def get_current_admin(
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required."
+        )
+
+    return current_user
 
 
 # ============================================================
