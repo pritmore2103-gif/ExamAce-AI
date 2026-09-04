@@ -384,13 +384,13 @@ def generate_study_plan(
     prompt = f"""
 You are an expert academic study planner for ExamAce AI.
 
-Create a personalized study plan.
-
-CURRENT DATE:
-{today}
+Create a personalized study plan for a student preparing for:
 
 TARGET EXAM:
 {exam}
+
+CURRENT DATE:
+{today}
 
 EXAM DATE:
 {exam_date}
@@ -404,27 +404,151 @@ AVAILABLE STUDY HOURS PER DAY:
 SUBJECTS:
 {subjects}
 
-Create a realistic plan for the entire preparation period.
 
-IMPORTANT:
+============================================================
+IMPORTANT MATHEMATICAL FORMATTING RULES
+============================================================
 
-Return ONLY valid JSON.
+This is extremely important.
 
-Do not use markdown.
-Do not use ```json.
-Do not write anything before or after the JSON.
+Whenever you write mathematics, ALWAYS use LaTeX.
 
-Use exactly this structure:
+Use inline LaTeX like:
+
+$\\theta$
+
+$\\lambda$
+
+$\\alpha$
+
+$\\beta$
+
+$\\pi$
+
+$x^2$
+
+$x_1$
+
+$\\sqrt{x}$
+
+$\\frac{{a}}{{b}}$
+
+$\\sin\\theta$
+
+$\\cos\\theta$
+
+$\\tan\\theta$
+
+$\\sin^2\\theta$
+
+$\\cos^2\\theta$
+
+$\\tan^2\\theta$
+
+$\\sin(\\theta)$
+
+$\\cos(\\theta)$
+
+$\\tan(\\theta)$
+
+$\\log x$
+
+$\\ln x$
+
+$\\leq$
+
+$\\geq$
+
+$\\neq$
+
+$\\rightarrow$
+
+For longer equations use:
+
+$$equation$$
+
+Examples:
+
+WRONG:
+sin2theta + cos2theta = 1
+
+WRONG:
+sin²θ + cos²θ = 1
+
+WRONG:
+theta = 30
+
+WRONG:
+lambda/2
+
+CORRECT:
+$\\sin^2\\theta + \\cos^2\\theta = 1$
+
+CORRECT:
+$\\theta = 30^\\circ$
+
+CORRECT:
+$\\lambda/2$
+
+CORRECT:
+$\\sin(2\\theta)$
+
+Do NOT write mathematical expressions using plain text when LaTeX can be used.
+
+Use LaTeX for:
+- trigonometry
+- algebra
+- calculus
+- geometry
+- physics equations
+- chemistry equations containing mathematical notation
+- symbols such as theta, lambda, alpha, beta, pi
+- powers and indices
+- fractions
+- square roots
+- inequalities
+
+
+============================================================
+STUDY PLAN REQUIREMENTS
+============================================================
+
+1. Return ONLY valid JSON.
+2. Do not use markdown.
+3. Do not use ```json.
+4. Do not write anything before or after the JSON.
+5. Create a plan for the entire preparation period.
+6. Never exceed {hours_per_day} total study hours on any day.
+7. Give more time to weak subjects.
+8. Include concept learning.
+9. Include practice questions/MCQs.
+10. Include revision.
+11. Include mock tests where appropriate.
+12. Increase revision and testing near the exam.
+13. Use actual dates.
+14. Start from {today}.
+15. Continue until {exam_date}.
+16. Keep the workload realistic.
+17. The sum of task hours for every day must not exceed {hours_per_day}.
+18. Do not invent impossible schedules.
+19. Keep topic names concise.
+20. Make every mathematical topic use proper LaTeX notation.
+21. Use correct mathematical terminology.
+
+
+============================================================
+JSON STRUCTURE
+============================================================
 
 {{
-  "overview": "Short explanation of the strategy",
+  "overview": "Short explanation of the strategy using LaTeX where necessary.",
 
   "phases": [
     {{
       "name": "Phase name",
       "start_day": 1,
       "end_day": 30,
-      "goal": "Main goal of this phase"
+      "goal": "Main goal of this phase. Use LaTeX for mathematical expressions."
     }}
   ],
 
@@ -435,8 +559,8 @@ Use exactly this structure:
 
       "tasks": [
         {{
-          "subject": "Physics",
-          "topic": "Topic name",
+          "subject": "Mathematics",
+          "topic": "Trigonometric identities: $\\\\sin^2\\\\theta + \\\\cos^2\\\\theta = 1$",
           "activity": "Concept Learning",
           "hours": 1.5
         }}
@@ -444,20 +568,6 @@ Use exactly this structure:
     }}
   ]
 }}
-
-Rules:
-
-1. Never exceed {hours_per_day} total study hours on any day.
-2. Give more time to weak subjects.
-3. Include concept learning.
-4. Include practice/MCQs.
-5. Include revision.
-6. Include mock tests where appropriate.
-7. Increase revision and testing near the exam.
-8. Use actual dates starting from {today}.
-9. Continue until the exam date.
-10. Keep the workload realistic.
-11. The sum of task hours for each day must not exceed {hours_per_day}.
 """
 
     response = client.models.generate_content(
@@ -466,21 +576,19 @@ Rules:
     )
 
     # --------------------------------------------------------
-    # GET TOKEN USAGE
+    # TOKEN USAGE
     # --------------------------------------------------------
 
-    input_tokens, output_tokens = get_token_usage(
-        response
-    )
+    input_tokens, output_tokens = get_token_usage(response)
 
     # --------------------------------------------------------
-    # GET RESPONSE
+    # RESPONSE TEXT
     # --------------------------------------------------------
 
     text = response.text.strip()
 
     # --------------------------------------------------------
-    # REMOVE CODE FENCES
+    # REMOVE CODE FENCES IF GEMINI ADDS THEM
     # --------------------------------------------------------
 
     text = re.sub(
@@ -505,12 +613,12 @@ Rules:
     text = text.strip()
 
     # --------------------------------------------------------
-    # VALIDATE JSON
+    # PARSE + VALIDATE JSON
     # --------------------------------------------------------
 
     try:
 
-        json.loads(text)
+        plan = json.loads(text)
 
     except json.JSONDecodeError as error:
 
@@ -524,12 +632,62 @@ Rules:
             "AI returned invalid study plan data."
         )
 
+    if not isinstance(plan, dict):
+
+        raise ValueError(
+            "AI study plan must be a JSON object."
+        )
+
+    if not isinstance(plan.get("phases"), list):
+
+        plan["phases"] = []
+
+    if not isinstance(plan.get("daily_plan"), list):
+
+        plan["daily_plan"] = []
+
     # --------------------------------------------------------
-    # RETURN PLAN + TOKEN USAGE
+    # BASIC PLAN VALIDATION
+    # --------------------------------------------------------
+
+    for day in plan["daily_plan"]:
+
+        if not isinstance(day, dict):
+            continue
+
+        if not isinstance(day.get("tasks"), list):
+            day["tasks"] = []
+
+        total_hours = 0
+
+        for task in day["tasks"]:
+
+            if not isinstance(task, dict):
+                continue
+
+            try:
+                task_hours = float(task.get("hours", 0))
+            except (TypeError, ValueError):
+                task_hours = 0
+
+            task["hours"] = task_hours
+            total_hours += task_hours
+
+        # Never allow AI to exceed the requested daily hours.
+        if total_hours > float(hours_per_day):
+
+            print(
+                f"Warning: Day {day.get('day')} "
+                f"contains {total_hours} hours, "
+                f"limit is {hours_per_day}."
+            )
+
+    # --------------------------------------------------------
+    # RETURN JSON STRING + TOKEN USAGE
     # --------------------------------------------------------
 
     return (
-        text,
+        json.dumps(plan, ensure_ascii=False),
         input_tokens,
         output_tokens
     )
