@@ -28,7 +28,6 @@ from models import Base, User, Note, StudyPlan, StudyTask
 
 from subscription import Subscription, AIUsage
 from subscription_service import (
-    check_quota,
     get_user_plan,
     get_usage_summary,
     record_ai_usage,
@@ -164,7 +163,7 @@ def get_current_user(
 # ============================================================
 # ADMIN AUTHENTICATION
 #
-# Moved below get_current_user() since it depends on it.
+# Defined below get_current_user() since it depends on it.
 # ============================================================
 
 def get_current_admin(
@@ -186,7 +185,13 @@ def get_current_admin(
 class MCQRequest(BaseModel):
     topic: str
     difficulty: str = "Medium"
-    count: int = Field(default=5, ge=1, le=20)
+
+    count: int = Field(
+        default=5,
+        ge=1,
+        le=20
+    )
+
     subject: str = "General"
     exam: str = "General"
 
@@ -205,16 +210,24 @@ class StudyPlanRequest(BaseModel):
 
 
 class SavePlanRequest(BaseModel):
+    exam: str
+    today: str
+    exam_date: str
+    days_remaining: int
+    hours_per_day: float
+    mode: str = "ai"
     plan_data: dict
 
 
 class ManualTaskRequest(BaseModel):
-    day: int
-    date: str
+    text: str
     subject: str
-    topic: str
-    activity: str
-    hours: float
+    date: str
+
+    hours: float = Field(
+        ge=0.5,
+        le=24
+    )
 
 
 class VerifyOTPRequest(BaseModel):
@@ -403,13 +416,13 @@ def generate_plan(
     if data.days_remaining <= 0:
         raise HTTPException(
             status_code=400,
-            detail="Days remaining must be greater than zero."
+            detail="Exam date must be in the future."
         )
 
     if data.hours_per_day <= 0:
         raise HTTPException(
             status_code=400,
-            detail="Hours per day must be greater than zero."
+            detail="Study hours must be greater than zero."
         )
 
     if not data.subjects:
@@ -427,12 +440,12 @@ def generate_plan(
 
     try:
         result = generate_study_plan(
-            exam=data.exam,
-            today=data.today,
-            exam_date=data.exam_date,
-            days_remaining=data.days_remaining,
-            hours_per_day=data.hours_per_day,
-            subjects=data.subjects
+            data.exam,
+            data.today,
+            data.exam_date,
+            data.days_remaining,
+            data.hours_per_day,
+            data.subjects
         )
 
         if isinstance(result, tuple):
@@ -475,7 +488,11 @@ def generate_plan(
 
 
 # ============================================================
-# SAVE PLAN
+# SAVE STUDY PLAN
+#
+# Builds the individual StudyTask rows from plan_data.daily_plan
+# server-side. The frontend must NOT duplicate this task-creation
+# logic.
 # ============================================================
 
 @app.post("/save-plan")
@@ -484,37 +501,100 @@ def save_plan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    existing_plans = (
-        db.query(StudyPlan)
-        .filter(StudyPlan.user_id == current_user.id)
-        .all()
-    )
+    try:
+        # --------------------------------------------------------
+        # DELETE PREVIOUS PLANS
+        # --------------------------------------------------------
 
-    for plan in existing_plans:
-        db.query(StudyTask).filter(
-            StudyTask.plan_id == plan.id
-        ).delete(synchronize_session=False)
-        db.delete(plan)
+        old_plans = (
+            db.query(StudyPlan)
+            .filter(StudyPlan.user_id == current_user.id)
+            .all()
+        )
 
-    db.commit()
+        for old_plan in old_plans:
+            db.query(StudyTask).filter(
+                StudyTask.plan_id == old_plan.id
+            ).delete(synchronize_session=False)
 
-    plan = StudyPlan(
-        user_id=current_user.id,
-        plan_data=json.dumps(data.plan_data)
-    )
+            db.delete(old_plan)
 
-    db.add(plan)
-    db.commit()
-    db.refresh(plan)
+        db.commit()
 
-    return {
-        "message": "Study plan saved successfully",
-        "plan_id": plan.id
-    }
+        # --------------------------------------------------------
+        # CREATE NEW PLAN
+        # --------------------------------------------------------
+
+        new_plan = StudyPlan(
+            user_id=current_user.id,
+            exam=data.exam,
+            today=data.today,
+            exam_date=data.exam_date,
+            days_remaining=data.days_remaining,
+            hours_per_day=data.hours_per_day,
+            mode=data.mode,
+            plan_data=json.dumps(data.plan_data)
+        )
+
+        db.add(new_plan)
+        db.commit()
+        db.refresh(new_plan)
+
+        # --------------------------------------------------------
+        # CREATE TASKS
+        # --------------------------------------------------------
+
+        daily_plan = data.plan_data.get("daily_plan", [])
+
+        for day_data in daily_plan:
+            day_number = day_data.get("day", 0)
+            day_date = day_data.get("date", "")
+            day_tasks = day_data.get("tasks", [])
+
+            if not isinstance(day_tasks, list):
+                continue
+
+            for task in day_tasks:
+                try:
+                    task_hours = float(task.get("hours", 0))
+                except (TypeError, ValueError):
+                    task_hours = 0
+
+                new_task = StudyTask(
+                    plan_id=new_plan.id,
+                    user_id=current_user.id,
+                    day=day_number,
+                    date=day_date,
+                    subject=task.get("subject", ""),
+                    topic=task.get("topic", ""),
+                    activity=task.get("activity", ""),
+                    hours=task_hours,
+                    completed=0
+                )
+
+                db.add(new_task)
+
+        db.commit()
+
+        return {
+            "message": "Study plan saved successfully",
+            "plan_id": new_plan.id
+        }
+
+    except Exception as error:
+        db.rollback()
+        print("Save plan error:", error)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save study plan."
+        )
 
 
 # ============================================================
 # GET SAVED PLAN
+#
+# Rebuilds daily_plan from the database so the frontend gets
+# real task IDs and completion state back.
 # ============================================================
 
 @app.get("/my-plan")
@@ -531,8 +611,7 @@ def get_my_plan(
 
     if not plan:
         return {
-            "plan": None,
-            "tasks": []
+            "plan": None
         }
 
     tasks = (
@@ -541,39 +620,57 @@ def get_my_plan(
             StudyTask.user_id == current_user.id,
             StudyTask.plan_id == plan.id
         )
-        .order_by(StudyTask.date, StudyTask.id)
+        .order_by(StudyTask.day, StudyTask.id)
         .all()
     )
 
     try:
-        plan_data = json.loads(plan.plan_data)
-    except Exception:
-        plan_data = plan.plan_data
+        saved_plan = json.loads(plan.plan_data)
+    except (TypeError, json.JSONDecodeError):
+        saved_plan = {}
 
-    return {
-        "plan": plan_data,
-        "tasks": [
-            {
-                "id": task.id,
+    daily_plan = {}
+
+    for task in tasks:
+        if task.day not in daily_plan:
+            daily_plan[task.day] = {
                 "day": task.day,
                 "date": task.date,
-                "subject": task.subject,
-                "topic": task.topic,
-                "activity": task.activity,
-                "hours": task.hours,
-                "completed": bool(task.completed),
+                "tasks": []
             }
-            for task in tasks
-        ]
+
+        daily_plan[task.day]["tasks"].append({
+            "id": task.id,
+            "subject": task.subject,
+            "topic": task.topic,
+            "activity": task.activity,
+            "hours": task.hours,
+            "completed": bool(task.completed)
+        })
+
+    saved_plan["daily_plan"] = list(daily_plan.values())
+
+    return {
+        "plan_id": plan.id,
+        "exam": plan.exam,
+        "today": plan.today,
+        "exam_date": plan.exam_date,
+        "days_remaining": plan.days_remaining,
+        "hours_per_day": plan.hours_per_day,
+        "mode": plan.mode,
+        "plan": saved_plan
     }
 
 
 # ============================================================
-# STUDY TASKS
+# ADD MANUAL STUDY TASK
+#
+# Kept separate from AI-plan creation. Matches Planner.jsx,
+# which sends { text, subject, date, hours }.
 # ============================================================
 
 @app.post("/study-task")
-def create_study_task(
+def add_manual_task(
     data: ManualTaskRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -588,28 +685,36 @@ def create_study_task(
     if not plan:
         raise HTTPException(
             status_code=404,
-            detail="Study plan not found"
+            detail="No study plan found."
         )
 
-    task = StudyTask(
+    new_task = StudyTask(
         plan_id=plan.id,
         user_id=current_user.id,
-        day=data.day,
+        day=0,
         date=data.date,
         subject=data.subject,
-        topic=data.topic,
-        activity=data.activity,
+        topic=data.text,
+        activity="Manual task",
         hours=data.hours,
         completed=0
     )
 
-    db.add(task)
+    db.add(new_task)
     db.commit()
-    db.refresh(task)
+    db.refresh(new_task)
 
     return {
-        "message": "Task created",
-        "task_id": task.id
+        "message": "Task added successfully",
+        "task": {
+            "id": new_task.id,
+            "subject": new_task.subject,
+            "topic": new_task.topic,
+            "activity": new_task.activity,
+            "date": new_task.date,
+            "hours": new_task.hours,
+            "completed": False
+        }
     }
 
 
@@ -793,14 +898,12 @@ def notes_generator(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-
     if not data.topic.strip():
         raise HTTPException(
             status_code=400,
             detail="Topic is required."
         )
 
-    # Check daily Notes quota
     reserve_quota(
         db=db,
         user_id=current_user.id,
@@ -809,42 +912,25 @@ def notes_generator(
     )
 
     try:
-
-        result = generate_notes(
-            data.topic.strip()
-        )
+        result = generate_notes(data.topic.strip())
 
         if isinstance(result, tuple):
-
             content = result[0]
-
-            input_tokens = (
-                result[1]
-                if len(result) > 1
-                else 0
-            )
-
-            output_tokens = (
-                result[2]
-                if len(result) > 2
-                else 0
-            )
-
+            input_tokens = result[1] if len(result) > 1 else 0
+            output_tokens = result[2] if len(result) > 2 else 0
         else:
-
             content = result
             input_tokens = 0
             output_tokens = 0
 
-        # Record successful Gemini usage
         record_ai_usage(
             db=db,
             user_id=current_user.id,
             feature="notes",
             units=1,
             model="gemini-2.5-flash",
-            input_tokens=input_tokens,
-            output_tokens=output_tokens
+            input_tokens=input_tokens or 0,
+            output_tokens=output_tokens or 0
         )
 
         return {
@@ -853,9 +939,7 @@ def notes_generator(
 
     except HTTPException:
         raise
-
     except Exception as error:
-
         release_quota(
             db=db,
             user_id=current_user.id,
@@ -863,11 +947,7 @@ def notes_generator(
             units=1
         )
 
-        print(
-            "Notes generation error:",
-            error
-        )
-
+        print("Notes generation error:", error)
         raise HTTPException(
             status_code=500,
             detail="Failed to generate notes."
@@ -925,9 +1005,9 @@ def usage_info(
 # ============================================================
 # REGISTER
 #
-# Fixed: user + subscription creation is now transactional.
-# If subscription creation fails, the user creation is rolled
-# back too, so we never end up with a user and no subscription.
+# User + subscription creation is transactional. If subscription
+# creation fails, the user creation is rolled back too, so we
+# never end up with a user and no subscription.
 # ============================================================
 
 @app.post("/register")
@@ -1004,8 +1084,8 @@ def register(
 # ============================================================
 # VERIFY OTP
 #
-# Fixed: incorrect attempts now actually increment
-# user.otp_attempts, so the 5-attempt lockout works.
+# Incorrect attempts increment user.otp_attempts, so the
+# 5-attempt lockout actually works.
 # ============================================================
 
 @app.post("/verify-otp")
@@ -1069,10 +1149,9 @@ def verify_otp(
 # ============================================================
 # RESEND OTP
 #
-# Fixed: the hourly resend limit is now checked BEFORE a new
-# OTP is generated/saved/sent, and otp_resend_count is actually
-# incremented on every successful resend. Resending also resets
-# otp_attempts, so old wrong guesses don't carry over.
+# The hourly resend limit is checked BEFORE a new OTP is
+# generated/saved/sent, and otp_resend_count is incremented on
+# every successful resend. Resending also resets otp_attempts.
 # ============================================================
 
 @app.post("/resend-otp")
