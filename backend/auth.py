@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 
 import bcrypt
 from jose import JWTError, jwt
@@ -14,23 +15,43 @@ if not SECRET_KEY:
 
 
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt."""
-    password_bytes = password.encode("utf-8")
-    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
+    """Hash a new password using bcrypt."""
+    return bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
+
+
+def is_legacy_password_hash(hashed: str) -> bool:
+    """Return True for the old SHA-256 password format."""
+    return len(hashed) == 64 and all(
+        character in "0123456789abcdef"
+        for character in hashed.lower()
+    )
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    """Verify a plaintext password against a bcrypt hash."""
+    """Verify bcrypt passwords and transparently support old SHA-256 hashes."""
+    if not hashed:
+        return False
+
+    # Legacy ExamAce passwords were SHA-256 hex digests.
+    if is_legacy_password_hash(hashed):
+        return sha256(password.encode("utf-8")).hexdigest() == hashed
+
     try:
         return bcrypt.checkpw(
             password.encode("utf-8"),
-            hashed.encode("utf-8"),
+            hashed.encode("utf-8")
         )
     except (ValueError, TypeError):
         return False
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    data: dict,
+    expires_delta: timedelta | None = None
+) -> str:
     """Create a signed JWT with an expiration time."""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (
