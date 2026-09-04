@@ -36,12 +36,7 @@ from subscription_service import (
 from schemas import UserCreate, UserLogin, NoteCreate
 from ai import generate_mcqs, generate_study_plan
 from ai_notes import generate_notes
-from auth import (
-    hash_password,
-    verify_password,
-    create_access_token,
-    decode_access_token,
-)
+
 from email_utils import send_otp_email
 
 
@@ -986,7 +981,7 @@ def resend_otp(
             "message": "Email already verified."
         }
 
-    otp_code = f"{random.randint(0, 999999):06d}"
+    otp_code = f"{secrets.randbelow(1_000_000):06d}"
     user.otp_code = otp_code
     user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
 
@@ -1026,6 +1021,11 @@ def login(
             status_code=401,
             detail="Invalid credentials"
         )
+
+    # Automatically upgrade old SHA-256 passwords to bcrypt.
+    if is_legacy_password_hash(db_user.password):
+        db_user.password = hash_password(user.password)
+        db.commit()
 
     if not db_user.is_verified:
         return {
