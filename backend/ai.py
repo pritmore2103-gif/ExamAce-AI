@@ -32,6 +32,50 @@ MODEL_NAME = "gemini-2.5-flash"
 
 
 # ============================================================
+# TOKEN USAGE HELPER
+# ============================================================
+
+def get_token_usage(response):
+    """
+    Extract Gemini token usage from the response.
+
+    Returns:
+        input_tokens
+        output_tokens
+    """
+
+    input_tokens = 0
+    output_tokens = 0
+
+    usage = getattr(response, "usage_metadata", None)
+
+    if usage:
+
+        input_tokens = (
+            getattr(
+                usage,
+                "prompt_token_count",
+                0
+            )
+            or 0
+        )
+
+        output_tokens = (
+            getattr(
+                usage,
+                "candidates_token_count",
+                0
+            )
+            or 0
+        )
+
+    return (
+        int(input_tokens),
+        int(output_tokens)
+    )
+
+
+# ============================================================
 # MCQ GENERATOR
 # ============================================================
 
@@ -104,10 +148,22 @@ RETURN EXACTLY THIS STRUCTURE:
         contents=prompt,
     )
 
+    # --------------------------------------------------------
+    # GET TOKEN USAGE
+    # --------------------------------------------------------
+
+    input_tokens, output_tokens = get_token_usage(
+        response
+    )
+
+    # --------------------------------------------------------
+    # GET RESPONSE TEXT
+    # --------------------------------------------------------
+
     text = response.text.strip()
 
     # --------------------------------------------------------
-    # Remove accidental markdown code fences
+    # REMOVE ACCIDENTAL MARKDOWN CODE FENCES
     # --------------------------------------------------------
 
     text = re.sub(
@@ -131,9 +187,8 @@ RETURN EXACTLY THIS STRUCTURE:
 
     text = text.strip()
 
-
     # --------------------------------------------------------
-    # Parse JSON
+    # PARSE JSON
     # --------------------------------------------------------
 
     try:
@@ -152,9 +207,8 @@ RETURN EXACTLY THIS STRUCTURE:
             "AI returned invalid MCQ data."
         )
 
-
     # --------------------------------------------------------
-    # Validate structure
+    # VALIDATE STRUCTURE
     # --------------------------------------------------------
 
     if not isinstance(data, dict):
@@ -163,16 +217,13 @@ RETURN EXACTLY THIS STRUCTURE:
             "AI response must be a JSON object."
         )
 
-
     questions = data.get("questions")
-
 
     if not isinstance(questions, list):
 
         raise ValueError(
             "AI response does not contain a valid questions list."
         )
-
 
     if len(questions) != count:
 
@@ -181,12 +232,10 @@ RETURN EXACTLY THIS STRUCTURE:
             f"instead of {count}."
         )
 
-
     validated_questions = []
 
-
     # --------------------------------------------------------
-    # Validate every question
+    # VALIDATE EVERY QUESTION
     # --------------------------------------------------------
 
     for index, question in enumerate(questions):
@@ -196,7 +245,6 @@ RETURN EXACTLY THIS STRUCTURE:
             raise ValueError(
                 f"Question {index + 1} has invalid format."
             )
-
 
         question_text = question.get(
             "question"
@@ -214,20 +262,17 @@ RETURN EXACTLY THIS STRUCTURE:
             "explanation"
         )
 
-
         if not question_text:
 
             raise ValueError(
                 f"Question {index + 1} is missing question text."
             )
 
-
         if not isinstance(options, dict):
 
             raise ValueError(
                 f"Question {index + 1} has invalid options."
             )
-
 
         required_options = [
             "A",
@@ -236,6 +281,9 @@ RETURN EXACTLY THIS STRUCTURE:
             "D"
         ]
 
+        # ----------------------------------------------------
+        # VALIDATE OPTIONS
+        # ----------------------------------------------------
 
         for option in required_options:
 
@@ -253,6 +301,9 @@ RETURN EXACTLY THIS STRUCTURE:
                     f"has an empty option {option}."
                 )
 
+        # ----------------------------------------------------
+        # VALIDATE ANSWER
+        # ----------------------------------------------------
 
         if answer not in required_options:
 
@@ -261,6 +312,9 @@ RETURN EXACTLY THIS STRUCTURE:
                 f"has invalid correct answer."
             )
 
+        # ----------------------------------------------------
+        # DEFAULT EXPLANATION
+        # ----------------------------------------------------
 
         if not explanation:
 
@@ -268,6 +322,9 @@ RETURN EXACTLY THIS STRUCTURE:
                 f"The correct answer is {answer}."
             )
 
+        # ----------------------------------------------------
+        # STORE CLEAN QUESTION
+        # ----------------------------------------------------
 
         validated_questions.append({
 
@@ -298,11 +355,17 @@ RETURN EXACTLY THIS STRUCTURE:
 
         })
 
+    # --------------------------------------------------------
+    # RETURN DATA + TOKEN USAGE
+    # --------------------------------------------------------
 
-    return {
-        "questions":
-            validated_questions
-    }
+    return (
+        {
+            "questions": validated_questions
+        },
+        input_tokens,
+        output_tokens
+    )
 
 
 # ============================================================
@@ -344,7 +407,9 @@ SUBJECTS:
 Create a realistic plan for the entire preparation period.
 
 IMPORTANT:
+
 Return ONLY valid JSON.
+
 Do not use markdown.
 Do not use ```json.
 Do not write anything before or after the JSON.
@@ -353,6 +418,7 @@ Use exactly this structure:
 
 {{
   "overview": "Short explanation of the strategy",
+
   "phases": [
     {{
       "name": "Phase name",
@@ -361,10 +427,12 @@ Use exactly this structure:
       "goal": "Main goal of this phase"
     }}
   ],
+
   "daily_plan": [
     {{
       "day": 1,
       "date": "YYYY-MM-DD",
+
       "tasks": [
         {{
           "subject": "Physics",
@@ -397,4 +465,71 @@ Rules:
         contents=prompt,
     )
 
-    return response.text
+    # --------------------------------------------------------
+    # GET TOKEN USAGE
+    # --------------------------------------------------------
+
+    input_tokens, output_tokens = get_token_usage(
+        response
+    )
+
+    # --------------------------------------------------------
+    # GET RESPONSE
+    # --------------------------------------------------------
+
+    text = response.text.strip()
+
+    # --------------------------------------------------------
+    # REMOVE CODE FENCES
+    # --------------------------------------------------------
+
+    text = re.sub(
+        r"^```json\s*",
+        "",
+        text,
+        flags=re.IGNORECASE
+    )
+
+    text = re.sub(
+        r"^```\s*",
+        "",
+        text
+    )
+
+    text = re.sub(
+        r"\s*```$",
+        "",
+        text
+    )
+
+    text = text.strip()
+
+    # --------------------------------------------------------
+    # VALIDATE JSON
+    # --------------------------------------------------------
+
+    try:
+
+        json.loads(text)
+
+    except json.JSONDecodeError as error:
+
+        print("Study plan JSON parsing error:")
+        print(error)
+
+        print("\nGemini response:")
+        print(text)
+
+        raise ValueError(
+            "AI returned invalid study plan data."
+        )
+
+    # --------------------------------------------------------
+    # RETURN PLAN + TOKEN USAGE
+    # --------------------------------------------------------
+
+    return (
+        text,
+        input_tokens,
+        output_tokens
+    )
