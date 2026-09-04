@@ -262,6 +262,44 @@ def create_note(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+   check_quota(
+        db=db,
+        user_id=current_user.id,
+        feature="notes",
+        units=1
+    )
+
+    try:
+        result = generate_notes(data.topic)
+
+        content = result[0]
+        input_tokens = result[1]
+        output_tokens = result[2]
+
+        record_ai_usage(
+            db=db,
+            user_id=current_user.id,
+            feature="notes",
+            units=1,
+            model="gemini_2.5_flash",
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
+
+        return {
+            "content":content
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        print("notes generation error:" ,error)
+        raise HTTPException(
+            status_code=500,
+            detail="failed to generate notes."
+        )
+        
     note = Note(
         user_id=current_user.id,
         title=data.title,
