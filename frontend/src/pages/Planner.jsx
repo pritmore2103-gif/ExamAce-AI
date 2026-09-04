@@ -4,99 +4,135 @@ import MathText from "../components/MathText";
 
 const API_URL = "https://examace-ai-cp3e.onrender.com";
 
-const MODES = [
-  { id: "ai", icon: "🧠", title: "AI Planner", description: "Let AI create an optimized study plan for you." },
-  { id: "normal", icon: "📅", title: "Normal Planner", description: "Create and manage your own study schedule." },
-  { id: "both", icon: "⚡", title: "AI + Normal", description: "Let AI create it, then edit and manage everything." },
+const SUBJECTS = [
+  "Physics",
+  "Chemistry",
+  "Mathematics",
+  "Biology",
+  "Computer Science",
+  "Other",
 ];
 
-const DEFAULT_SUBJECTS = [
-  { name: "Physics", level: "Average" },
-  { name: "Chemistry", level: "Average" },
-  { name: "Mathematics", level: "Average" },
+const EXAMS = [
+  "MHT-CET",
+  "JEE",
+  "NEET",
+  "HSC",
+  "CBSE",
+  "Other",
 ];
 
-function authHeaders() {
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+function getToken() {
+  return localStorage.getItem("token");
 }
 
-function attachSavedTaskIds(plan, savedTasks) {
-  if (!plan?.daily_plan || !Array.isArray(savedTasks)) return plan;
+function getLocalISODate() {
+  const now = new Date();
 
-  const unused = [...savedTasks];
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getDaysRemaining(examDate) {
+  if (!examDate) return 0;
+
+  const today = new Date(`${getLocalISODate()}T00:00:00`);
+  const exam = new Date(`${examDate}T00:00:00`);
+
+  const difference = exam.getTime() - today.getTime();
+
+  return Math.ceil(difference / (1000 * 60 * 60 * 24));
+}
+
+function normalizePlan(plan) {
+  if (!plan || typeof plan !== "object") {
+    return null;
+  }
+
+  const dailyPlan = Array.isArray(plan.daily_plan)
+    ? plan.daily_plan
+    : [];
 
   return {
     ...plan,
-    daily_plan: plan.daily_plan.map((day) => ({
-      ...day,
-      tasks: Array.isArray(day.tasks)
-        ? day.tasks.map((task) => {
-            const index = unused.findIndex(
-              (saved) =>
-                String(saved.date || "") === String(day.date || "") &&
-                String(saved.subject || "") === String(task.subject || "") &&
-                String(saved.topic || "") === String(task.topic || "")
-            );
-
-            if (index === -1) return task;
-
-            const saved = unused.splice(index, 1)[0];
-            return {
-              ...task,
-              id: saved.id,
-              completed: Boolean(saved.completed),
-            };
-          })
+    daily_plan: dailyPlan.map((day, index) => ({
+      day: day?.day ?? index + 1,
+      date: day?.date ?? "",
+      tasks: Array.isArray(day?.tasks)
+        ? day.tasks.map((task) => ({
+            id: task?.id ?? null,
+            subject: task?.subject ?? "",
+            topic: task?.topic ?? "",
+            activity: task?.activity ?? "",
+            hours: Number(task?.hours ?? 0),
+            completed: Boolean(task?.completed),
+          }))
         : [],
     })),
   };
 }
 
 export default function Planner() {
-  const todayISO = new Date().toISOString().split("T")[0];
-  const todayString = new Date().toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const [mode, setMode] = useState("ai");
 
-  const [mode, setMode] = useState("both");
-  const [exam, setExam] = useState("");
+  const [exam, setExam] = useState("MHT-CET");
   const [examDate, setExamDate] = useState("");
-  const [hours, setHours] = useState("");
-  const [subjects, setSubjects] = useState(DEFAULT_SUBJECTS);
+  const [hours, setHours] = useState(6);
+
+  const [subjects, setSubjects] = useState(
+    SUBJECTS.slice(0, 3).map((subject) => ({
+      name: subject,
+      strength: "Medium",
+    }))
+  );
 
   const [aiPlan, setAiPlan] = useState(null);
   const [planId, setPlanId] = useState(null);
-  const [planCreated, setPlanCreated] = useState(false);
-  const [tasks, setTasks] = useState([]);
 
   const [loadingPlan, setLoadingPlan] = useState(true);
-  const [loadingAI, setLoadingAI] = useState(false);
-  const [savingPlan, setSavingPlan] = useState(false);
-  const [addingTask, setAddingTask] = useState(false);
-  const [deletingPlan, setDeletingPlan] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [taskText, setTaskText] = useState("");
-  const [taskSubject, setTaskSubject] = useState("Physics");
-  const [taskDate, setTaskDate] = useState("");
-  const [taskHours, setTaskHours] = useState("");
+  const [manualText, setManualText] = useState("");
+  const [manualSubject, setManualSubject] = useState("Mathematics");
+  const [manualDate, setManualDate] = useState(getLocalISODate());
+  const [manualHours, setManualHours] = useState(1);
 
-  const daysRemaining = useMemo(() => {
-    if (!examDate) return null;
-    const examDay = new Date(`${examDate}T00:00:00`);
-    const currentDay = new Date(`${todayISO}T00:00:00`);
-    return Math.ceil((examDay - currentDay) / 86400000);
-  }, [examDate, todayISO]);
+  const [addingTask, setAddingTask] = useState(false);
+  const [deletingTask, setDeletingTask] = useState(null);
+  const [deletingPlan, setDeletingPlan] = useState(false);
 
-  const loadSavedPlan = async () => {
-    const token = localStorage.getItem("token");
+  const daysRemaining = useMemo(
+    () => getDaysRemaining(examDate),
+    [examDate]
+  );
+
+  // ============================================================
+  // AUTH HEADERS
+  // ============================================================
+
+  function authHeaders() {
+    const token = getToken();
+
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+  }
+
+  // ============================================================
+  // LOAD SAVED PLAN
+  // ============================================================
+
+  async function loadSavedPlan() {
+    const token = getToken();
+
     if (!token) {
       setLoadingPlan(false);
       return;
@@ -104,556 +140,1307 @@ export default function Planner() {
 
     try {
       setLoadingPlan(true);
-      const response = await fetch(`${API_URL}/my-plan`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      setError("");
 
-      if (!response.ok) throw new Error("Could not load your saved study plan.");
+      const response = await fetch(
+        `${API_URL}/my-plan`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(
+          data?.detail || "Failed to load saved plan."
+        );
+      }
+
       if (!data.plan) {
         setAiPlan(null);
-        setTasks([]);
         setPlanId(null);
-        setPlanCreated(false);
         return;
       }
 
-      const savedTasks = Array.isArray(data.tasks) ? data.tasks : [];
-      const restoredPlan = attachSavedTaskIds(data.plan, savedTasks);
+      const loadedPlan = normalizePlan(data.plan);
 
-      setPlanId(data.plan_id || null);
-      setExam(data.exam || "");
-      setExamDate(data.exam_date || "");
-      setHours(data.hours_per_day != null ? String(data.hours_per_day) : "");
-      setMode(data.mode || "both");
-      setAiPlan(restoredPlan);
-      setTasks(savedTasks.map((task) => ({
-        id: task.id,
-        text: task.topic || "",
-        subject: task.subject || "",
-        date: task.date || "",
-        hours: Number(task.hours || 0),
-        activity: task.activity || "",
-        completed: Boolean(task.completed),
-        aiGenerated: true,
-      })));
-      setPlanCreated(true);
+      setAiPlan(loadedPlan);
+      setPlanId(data.plan_id ?? null);
+
+      if (data.exam) {
+        setExam(data.exam);
+      }
+
+      if (data.exam_date) {
+        setExamDate(data.exam_date);
+      }
+
+      if (data.hours_per_day) {
+        setHours(data.hours_per_day);
+      }
+
+      if (data.mode) {
+        setMode(data.mode);
+      }
     } catch (err) {
-      console.error("Load planner error:", err);
-      setError(err.message || "Could not load your study plan.");
+      console.error("Load plan error:", err);
+      setError(err.message || "Failed to load saved plan.");
     } finally {
       setLoadingPlan(false);
     }
-  };
+  }
 
   useEffect(() => {
     loadSavedPlan();
   }, []);
 
-  useEffect(() => {
-    if (!success) return;
-    const timer = setTimeout(() => setSuccess(""), 3000);
-    return () => clearTimeout(timer);
-  }, [success]);
+  // ============================================================
+  // SUBJECT HANDLING
+  // ============================================================
 
-  const validate = () => {
-    if (!exam || !examDate || !hours) {
-      setError("Please fill exam, exam date and daily study hours.");
-      return false;
-    }
-    if (daysRemaining === null || daysRemaining <= 0) {
-      setError("Please select a future exam date.");
-      return false;
-    }
-    const value = Number(hours);
-    if (!Number.isFinite(value) || value <= 0 || value > 16) {
-      setError("Study hours must be between 0.5 and 16 per day.");
-      return false;
-    }
-    return true;
-  };
+  function addSubject() {
+    const existingNames = subjects.map((item) => item.name);
 
-  const updateSubjectLevel = (index, level) => {
-    setSubjects((prev) => prev.map((item, i) => i === index ? { ...item, level } : item));
-  };
+    const available = SUBJECTS.find(
+      (subject) => !existingNames.includes(subject)
+    );
 
-  const saveAIPlan = async (plan) => {
-  const token = localStorage.getItem("token");
+    if (!available) return;
 
-  if (!token) {
-    throw new Error("Please login first.");
+    setSubjects((prev) => [
+      ...prev,
+      {
+        name: available,
+        strength: "Medium",
+      },
+    ]);
   }
 
-  if (!plan || typeof plan !== "object") {
-    throw new Error("Invalid study plan.");
+  function removeSubject(index) {
+    setSubjects((prev) =>
+      prev.filter((_, i) => i !== index)
+    );
   }
 
-  setSavingPlan(true);
+  function updateSubject(index, field, value) {
+    setSubjects((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              [field]: value,
+            }
+          : item
+      )
+    );
+  }
 
-  try {
-    const response = await fetch(`${API_URL}/save-plan`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        plan_data: plan,
-      }),
-    });
+  // ============================================================
+  // SAVE PLAN
+  // ============================================================
+  //
+  // IMPORTANT:
+  // /save-plan already creates StudyTask rows in the backend.
+  //
+  // Therefore we DO NOT loop through the AI tasks and call
+  // /study-task here.
+  //
+  // After saving, /my-plan is called again so the frontend gets
+  // the real database task IDs.
+  // ============================================================
 
-    const text = await response.text();
-
-    let data;
+  async function saveAIPlan(plan) {
+    if (!plan) return false;
 
     try {
-      data = text ? JSON.parse(text) : {};
-    } catch {
-      throw new Error(
-        `Failed to save study plan. Server response: ${text}`
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch(
+        `${API_URL}/save-plan`,
+        {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            exam,
+            today: getLocalISODate(),
+            exam_date: examDate,
+            days_remaining: daysRemaining,
+            hours_per_day: Number(hours),
+            mode: "ai",
+            plan_data: plan,
+          }),
+        }
       );
-    }
 
-    if (!response.ok) {
-      throw new Error(
-        data.detail ||
-        data.message ||
-        "Failed to save study plan."
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.detail || "Failed to save study plan."
+        );
+      }
+
+      setPlanId(data.plan_id ?? null);
+
+      // Reload from database.
+      // This gives every task its real database ID.
+      await loadSavedPlan();
+
+      setSuccess("Study plan saved successfully.");
+
+      return true;
+    } catch (err) {
+      console.error("Save plan error:", err);
+
+      setError(
+        err.message || "Failed to save study plan."
       );
+
+      return false;
+    } finally {
+      setSaving(false);
     }
-
-    if (!data.plan_id) {
-      throw new Error(
-        "Study plan was not saved correctly: no plan ID returned."
-      );
-    }
-
-    setPlanId(data.plan_id);
-
-    /*
-     * IMPORTANT:
-     *
-     * Do NOT create StudyTask rows here.
-     *
-     * The backend /save-plan endpoint should create the
-     * StudyTask records.
-     *
-     * Reload the saved plan from /my-plan so React receives
-     * the real database task IDs.
-     */
-
-    await loadSavedPlan();
-
-    setSuccess("Study plan saved successfully!");
-
-  } catch (err) {
-
-    console.error("Save study plan error:", err);
-
-    throw err;
-
-  } finally {
-
-    setSavingPlan(false);
   }
-};
 
-  const generateAIPlan = async () => {
-  if (!validate()) return;
+  // ============================================================
+  // GENERATE AI PLAN
+  // ============================================================
 
-  try {
-    setLoadingAI(true);
+  async function generateAIPlan() {
     setError("");
     setSuccess("");
 
-    const response = await fetch(`${API_URL}/generate-plan`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        exam,
-        today: todayISO,
-        exam_date: examDate,
-        days_remaining: daysRemaining,
-        hours_per_day: Number(hours),
-        subjects,
-      }),
-    });
+    if (!examDate) {
+      setError("Please select your exam date.");
+      return;
+    }
 
-    const text = await response.text();
+    if (daysRemaining <= 0) {
+      setError("Exam date must be in the future.");
+      return;
+    }
 
-    let data;
+    if (!hours || Number(hours) <= 0) {
+      setError("Study hours must be greater than zero.");
+      return;
+    }
+
+    if (!subjects.length) {
+      setError("Please select at least one subject.");
+      return;
+    }
 
     try {
-      data = text ? JSON.parse(text) : {};
-    } catch {
-      throw new Error("Backend returned an invalid response.");
-    }
+      setGenerating(true);
 
-    if (!response.ok) {
-      throw new Error(
-        data.detail ||
-        data.message ||
-        "Failed to generate study plan."
+      const response = await fetch(
+        `${API_URL}/generate-plan`,
+        {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            exam,
+            today: getLocalISODate(),
+            exam_date: examDate,
+            days_remaining: daysRemaining,
+            hours_per_day: Number(hours),
+            subjects,
+          }),
+        }
       );
-    }
 
-    let rawPlan = data.content;
+      const data = await response.json();
 
-    if (typeof rawPlan === "string") {
+      if (!response.ok) {
+        throw new Error(
+          data?.detail || "Failed to generate study plan."
+        );
+      }
 
-      rawPlan = rawPlan
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
+      if (!data.content) {
+        throw new Error(
+          "The AI returned an empty study plan."
+        );
+      }
+
+      let parsedPlan;
 
       try {
-        rawPlan = JSON.parse(rawPlan);
-      } catch (error) {
-
+        parsedPlan =
+          typeof data.content === "string"
+            ? JSON.parse(data.content)
+            : data.content;
+      } catch (parseError) {
         console.error(
-          "Invalid AI plan JSON:",
-          rawPlan
+          "Plan JSON parsing error:",
+          parseError
         );
 
+        throw new Error(
+          "AI returned an invalid study plan format. Please try again."
+        );
+      }
+
+      const normalized = normalizePlan(parsedPlan);
+
+      if (
+        !normalized ||
+        !Array.isArray(normalized.daily_plan)
+      ) {
         throw new Error(
           "AI returned an invalid study plan."
         );
       }
+
+      setAiPlan(normalized);
+
+      // Automatically save.
+      await saveAIPlan(normalized);
+    } catch (err) {
+      console.error("Generate plan error:", err);
+
+      setError(
+        err.message ||
+          "Failed to generate study plan."
+      );
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  // ============================================================
+  // TOGGLE TASK
+  // ============================================================
+
+  async function toggleTask(taskId) {
+    if (!taskId) {
+      setError(
+        "This task is not connected to the database yet. Please reload the plan."
+      );
+      return;
     }
 
-    if (
-      !rawPlan ||
-      typeof rawPlan !== "object" ||
-      Array.isArray(rawPlan)
-    ) {
-      throw new Error(
-        "AI returned an invalid study plan."
+    try {
+      setError("");
+
+      const response = await fetch(
+        `${API_URL}/study-task/${taskId}`,
+        {
+          method: "PATCH",
+          headers: authHeaders(),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.detail || "Failed to update task."
+        );
+      }
+
+      setAiPlan((previous) => {
+        if (!previous) return previous;
+
+        return {
+          ...previous,
+          daily_plan: previous.daily_plan.map(
+            (day) => ({
+              ...day,
+              tasks: day.tasks.map((task) =>
+                task.id === taskId
+                  ? {
+                      ...task,
+                      completed: Boolean(
+                        data.completed
+                      ),
+                    }
+                  : task
+              ),
+            })
+          ),
+        };
+      });
+    } catch (err) {
+      console.error("Toggle task error:", err);
+      setError(
+        err.message || "Failed to update task."
       );
     }
-
-    if (!Array.isArray(rawPlan.phases)) {
-      rawPlan.phases = [];
-    }
-
-    if (!Array.isArray(rawPlan.daily_plan)) {
-      rawPlan.daily_plan = [];
-    }
-
-    setAiPlan(rawPlan);
-    setPlanCreated(true);
-
-    await saveAIPlan(rawPlan);
-
-  } catch (err) {
-
-    console.error(
-      "AI Planner Error:",
-      err
-    );
-
-    setError(
-      err.message ||
-      "Failed to generate study plan."
-    );
-
-  } finally {
-
-    setLoadingAI(false);
   }
-};
 
-  const createPlanner = async () => {
-    if (!validate()) return;
-    setPlanCreated(true);
+  // ============================================================
+  // DELETE TASK
+  // ============================================================
 
-    if (mode === "normal") {
+  async function deleteTask(taskId) {
+    if (!taskId) return;
+
+    try {
+      setDeletingTask(taskId);
       setError("");
-      setSuccess("Your planner is ready. Add your study tasks below.");
-      return;
-    }
 
-    await generateAIPlan();
-  };
+      const response = await fetch(
+        `${API_URL}/study-task/${taskId}`,
+        {
+          method: "DELETE",
+          headers: authHeaders(),
+        }
+      );
 
-  const toggleTask = async (id) => {
-    if (!id) return;
-    try {
-      const response = await fetch(`${API_URL}/study-task/${id}`, {
-        method: "PATCH",
-        headers: authHeaders(),
-      });
-      if (!response.ok) throw new Error("Could not update task.");
       const data = await response.json();
-      const completed = Boolean(data.completed);
 
-      setTasks((prev) => prev.map((task) => task.id === id ? { ...task, completed } : task));
-      setAiPlan((prev) => prev ? {
-        ...prev,
-        daily_plan: (prev.daily_plan || []).map((day) => ({
-          ...day,
-          tasks: (day.tasks || []).map((task) => task.id === id ? { ...task, completed } : task),
-        })),
-      } : prev);
-    } catch (err) {
-      setError(err.message || "Could not update task.");
-    }
-  };
+      if (!response.ok) {
+        throw new Error(
+          data?.detail || "Failed to delete task."
+        );
+      }
 
-  const deleteTask = async (id) => {
-    if (!id || !window.confirm("Delete this study task?")) return;
+      setAiPlan((previous) => {
+        if (!previous) return previous;
 
-    try {
-      const response = await fetch(`${API_URL}/study-task/${id}`, {
-        method: "DELETE",
-        headers: authHeaders(),
+        return {
+          ...previous,
+          daily_plan: previous.daily_plan
+            .map((day) => ({
+              ...day,
+              tasks: day.tasks.filter(
+                (task) => task.id !== taskId
+              ),
+            }))
+            .filter(
+              (day) => day.tasks.length > 0
+            ),
+        };
       });
-      if (!response.ok) throw new Error("Could not delete task.");
 
-      setTasks((prev) => prev.filter((task) => task.id !== id));
-      setAiPlan((prev) => prev ? {
-        ...prev,
-        daily_plan: (prev.daily_plan || []).map((day) => ({
-          ...day,
-          tasks: (day.tasks || []).filter((task) => task.id !== id),
-        })),
-      } : prev);
       setSuccess("Task deleted.");
     } catch (err) {
-      setError(err.message || "Could not delete task.");
-    }
-  };
+      console.error("Delete task error:", err);
 
-  const addTask = async () => {
-    if (!taskText.trim() || !taskDate || !taskHours) {
-      setError("Please fill task, date and hours.");
+      setError(
+        err.message || "Failed to delete task."
+      );
+    } finally {
+      setDeletingTask(null);
+    }
+  }
+
+  // ============================================================
+  // ADD MANUAL TASK
+  // ============================================================
+
+  async function addTask(event) {
+    event.preventDefault();
+
+    setError("");
+    setSuccess("");
+
+    if (!manualText.trim()) {
+      setError("Enter a task.");
       return;
     }
 
-    const numericHours = Number(taskHours);
-    if (!Number.isFinite(numericHours) || numericHours <= 0 || numericHours > 24) {
-      setError("Task hours must be between 0.5 and 24.");
+    if (!manualDate) {
+      setError("Select a date.");
       return;
     }
 
     try {
       setAddingTask(true);
-      setError("");
 
-      const response = await fetch(`${API_URL}/study-task`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({
-          day: daysRemaining ? Math.max(1, 1 + Math.round((new Date(`${taskDate}T00:00:00`) - new Date(`${todayISO}T00:00:00`)) / 86400000)) : 1,
-          date: taskDate,
-          subject: taskSubject,
-          topic: taskText.trim(),
-          activity: "Manual study task",
-          hours: numericHours,
-        }),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Could not add task.");
-      }
+      const response = await fetch(
+        `${API_URL}/study-task`,
+        {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            text: manualText.trim(),
+            subject: manualSubject,
+            date: manualDate,
+            hours: Number(manualHours),
+          }),
+        }
+      );
 
       const data = await response.json();
-      const saved = data.task || {
-        id: data.task_id,
-        topic: taskText.trim(),
-        subject: taskSubject,
-        date: taskDate,
-        hours: numericHours,
-        activity: "Manual study task",
-        completed: false,
-      };
 
-      setTasks((prev) => [...prev, {
-        id: saved.id,
-        text: saved.topic || "",
-        subject: saved.subject || "",
-        date: saved.date || "",
-        hours: Number(saved.hours || 0),
-        activity: saved.activity || "",
-        completed: Boolean(saved.completed),
-        aiGenerated: false,
-      }]);
+      if (!response.ok) {
+        throw new Error(
+          data?.detail || "Failed to add task."
+        );
+      }
 
-      setTaskText("");
-      setTaskDate("");
-      setTaskHours("");
-      setSuccess("Task added successfully!");
+      setManualText("");
+      setManualHours(1);
+
+      await loadSavedPlan();
+
+      setSuccess("Task added successfully.");
     } catch (err) {
-      setError(err.message || "Could not add task.");
+      console.error("Add task error:", err);
+
+      setError(
+        err.message || "Failed to add task."
+      );
     } finally {
       setAddingTask(false);
     }
-  };
+  }
 
-  const deletePlan = async () => {
-    if (!window.confirm("Delete your entire study plan? This cannot be undone.")) return;
+  // ============================================================
+  // DELETE ENTIRE PLAN
+  // ============================================================
+
+  async function deletePlan() {
+    if (!window.confirm(
+      "Delete your entire study plan?"
+    )) {
+      return;
+    }
 
     try {
       setDeletingPlan(true);
-      const response = await fetch(`${API_URL}/my-plan`, {
-        method: "DELETE",
-        headers: authHeaders(),
-      });
-      if (!response.ok) throw new Error("Could not delete planner.");
+      setError("");
+      setSuccess("");
+
+      const response = await fetch(
+        `${API_URL}/my-plan`,
+        {
+          method: "DELETE",
+          headers: authHeaders(),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.detail || "Failed to delete plan."
+        );
+      }
 
       setAiPlan(null);
-      setTasks([]);
       setPlanId(null);
-      setPlanCreated(false);
-      setExam("");
-      setExamDate("");
-      setHours("");
+
       setSuccess("Study plan deleted.");
     } catch (err) {
-      setError(err.message || "Could not delete planner.");
+      console.error("Delete plan error:", err);
+
+      setError(
+        err.message || "Failed to delete study plan."
+      );
     } finally {
       setDeletingPlan(false);
     }
-  };
+  }
 
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((task) => task.completed).length;
-  const progress = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  // ============================================================
+  // STATISTICS
+  // ============================================================
+
+  const statistics = useMemo(() => {
+    if (!aiPlan?.daily_plan) {
+      return {
+        totalTasks: 0,
+        completedTasks: 0,
+        totalHours: 0,
+        completedHours: 0,
+        progress: 0,
+      };
+    }
+
+    const allTasks = aiPlan.daily_plan.flatMap(
+      (day) => day.tasks || []
+    );
+
+    const totalTasks = allTasks.length;
+
+    const completedTasks = allTasks.filter(
+      (task) => task.completed
+    ).length;
+
+    const totalHours = allTasks.reduce(
+      (sum, task) =>
+        sum + Number(task.hours || 0),
+      0
+    );
+
+    const completedHours = allTasks
+      .filter((task) => task.completed)
+      .reduce(
+        (sum, task) =>
+          sum + Number(task.hours || 0),
+        0
+      );
+
+    const progress =
+      totalTasks > 0
+        ? Math.round(
+            (completedTasks / totalTasks) * 100
+          )
+        : 0;
+
+    return {
+      totalTasks,
+      completedTasks,
+      totalHours,
+      completedHours,
+      progress,
+    };
+  }, [aiPlan]);
+
+  // ============================================================
+  // LOADING
+  // ============================================================
 
   if (loadingPlan) {
     return (
-      <div className="min-h-screen bg-[#0B0E14] text-white flex">
+      <div className="min-h-screen bg-slate-950 text-white flex">
         <Sidebar />
+
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-5xl mb-4 animate-pulse">📅</div>
-            <h2 className="text-xl font-bold">Loading your planner...</h2>
-            <p className="text-slate-400 mt-2">Checking your saved study plan.</p>
+            <div className="animate-spin w-10 h-10 border-4 border-slate-600 border-t-blue-500 rounded-full mx-auto mb-4" />
+
+            <p className="text-slate-300">
+              Loading your study plan...
+            </p>
           </div>
         </main>
       </div>
     );
   }
 
+  // ============================================================
+  // UI
+  // ============================================================
+
   return (
-    <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-950 text-white flex">
       <Sidebar />
 
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold" style={{ fontFamily: "'Sora', sans-serif" }}>Study planner</h1>
-              <p className="text-slate-400 mt-2">Plan your preparation your way.</p>
+      <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto">
+
+          {/* HEADER */}
+
+          <div className="mb-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold">
+                  AI Study Planner
+                </h1>
+
+                <p className="text-slate-400 mt-2">
+                  Build a personalized preparation plan
+                  and track your progress.
+                </p>
+              </div>
+
+              {aiPlan && (
+                <button
+                  onClick={deletePlan}
+                  disabled={deletingPlan}
+                  className="px-4 py-2 rounded-lg bg-red-600/20 border border-red-500/30 text-red-300 hover:bg-red-600/30 disabled:opacity-50"
+                >
+                  {deletingPlan
+                    ? "Deleting..."
+                    : "Delete Plan"}
+                </button>
+              )}
             </div>
-            {planId && <span className="w-fit text-xs px-3 py-2 rounded-full bg-emerald-950/40 border border-emerald-800 text-emerald-400">● Plan saved</span>}
           </div>
 
-          {success && <div className="mb-6 bg-emerald-950/40 border border-emerald-800 text-emerald-300 p-4 rounded-xl">{success}</div>}
-          {error && <div className="mb-6 bg-rose-950/40 border border-rose-800 text-rose-300 p-4 rounded-xl"><b>Planner error:</b> {error}</div>}
+          {/* ERROR */}
 
-          <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">How do you want to plan?</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {MODES.map((item) => (
-                <button key={item.id} type="button" onClick={() => setMode(item.id)} className={`text-left p-5 rounded-2xl border transition ${mode === item.id ? "border-indigo-600 bg-indigo-600/10" : "border-slate-800 bg-[#151922] hover:border-slate-700"}`}>
-                  <div className="text-3xl mb-3">{item.icon}</div>
-                  <h3 className="font-bold text-lg">{item.title}</h3>
-                  <p className="text-sm text-slate-400 mt-2">{item.description}</p>
-                </button>
-              ))}
+          {error && (
+            <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
+              {error}
             </div>
-          </section>
+          )}
 
-          <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
-            <h2 className="text-xl font-bold mb-6">Study information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-              <div className="bg-[#0B0E14] border border-slate-800 p-4 rounded-xl">
-                <p className="text-sm text-slate-400">Today</p>
-                <p className="font-semibold mt-1">{todayString}</p>
-              </div>
+          {/* SUCCESS */}
+
+          {success && (
+            <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300">
+              {success}
+            </div>
+          )}
+
+          {/* SETUP */}
+
+          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-7 mb-8">
+
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <label className="block text-sm text-slate-300 mb-2">Target exam</label>
-                <select value={exam} onChange={(e) => setExam(e.target.value)} className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none">
-                  <option value="">Select exam</option>
-                  <option>MHT-CET</option><option>JEE</option><option>NEET</option><option>CBSE Board</option><option>Maharashtra Board</option>
+                <h2 className="text-xl font-bold">
+                  Plan Settings
+                </h2>
+
+                <p className="text-slate-400 text-sm mt-1">
+                  Tell ExamAce about your preparation.
+                </p>
+              </div>
+
+              <div className="flex rounded-lg bg-slate-800 p-1">
+                <button
+                  onClick={() => setMode("ai")}
+                  className={`px-4 py-2 rounded-md text-sm ${
+                    mode === "ai"
+                      ? "bg-blue-600 text-white"
+                      : "text-slate-400"
+                  }`}
+                >
+                  AI Plan
+                </button>
+
+                <button
+                  onClick={() => setMode("manual")}
+                  className={`px-4 py-2 rounded-md text-sm ${
+                    mode === "manual"
+                      ? "bg-blue-600 text-white"
+                      : "text-slate-400"
+                  }`}
+                >
+                  Manual
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+              {/* EXAM */}
+
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">
+                  Exam
+                </label>
+
+                <select
+                  value={exam}
+                  onChange={(e) =>
+                    setExam(e.target.value)
+                  }
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none focus:border-blue-500"
+                >
+                  {EXAMS.map((item) => (
+                    <option
+                      key={item}
+                      value={item}
+                    >
+                      {item}
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              {/* EXAM DATE */}
+
               <div>
-                <label className="block text-sm text-slate-300 mb-2">Exam date</label>
-                <input type="date" min={todayISO} value={examDate} onChange={(e) => setExamDate(e.target.value)} className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none" />
+                <label className="block text-sm text-slate-300 mb-2">
+                  Exam Date
+                </label>
+
+                <input
+                  type="date"
+                  value={examDate}
+                  min={getLocalISODate()}
+                  onChange={(e) =>
+                    setExamDate(e.target.value)
+                  }
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none focus:border-blue-500"
+                />
+
+                {examDate && (
+                  <p className="text-sm text-blue-400 mt-2">
+                    {daysRemaining > 0
+                      ? `${daysRemaining} days remaining`
+                      : "Exam date has passed"}
+                  </p>
+                )}
               </div>
+
+              {/* HOURS */}
+
               <div>
-                <label className="block text-sm text-slate-300 mb-2">Study hours / day</label>
-                <input type="number" min="0.5" max="16" step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="e.g. 5" className="w-full p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none" />
+                <label className="block text-sm text-slate-300 mb-2">
+                  Study Hours / Day
+                </label>
+
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  step="0.5"
+                  value={hours}
+                  onChange={(e) =>
+                    setHours(e.target.value)
+                  }
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none focus:border-blue-500"
+                />
               </div>
             </div>
-            {daysRemaining !== null && <div className="mt-5 bg-indigo-600/10 border border-indigo-600/30 p-4 rounded-xl"><p className="text-sm text-slate-400">Preparation time</p><p className="text-2xl font-bold text-indigo-400 mt-1">{daysRemaining > 0 ? `${daysRemaining} days remaining` : "Exam date has passed"}</p></div>}
-          </section>
 
-          <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
-            <h2 className="text-xl font-bold mb-2">Subject strength</h2>
-            <p className="text-slate-400 text-sm mb-6">Tell AI how confident you are in each subject.</p>
-            <div className="space-y-4">
-              {subjects.map((subject, index) => (
-                <div key={subject.name} className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0B0E14] border border-slate-800 p-4 rounded-xl">
-                  <span className="font-semibold">{subject.name}</span>
-                  <div className="flex gap-2">{["Weak", "Average", "Strong"].map((level) => <button key={level} type="button" onClick={() => updateSubjectLevel(index, level)} className={`px-4 py-2 rounded-lg text-sm ${subject.level === level ? "bg-indigo-600" : "bg-slate-800 hover:bg-slate-700"}`}>{level}</button>)}</div>
+            {/* SUBJECTS */}
+
+            <div className="mt-7">
+
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-semibold">
+                    Subjects
+                  </h3>
+
+                  <p className="text-xs text-slate-500 mt-1">
+                    Your weaker subjects receive more
+                    attention.
+                  </p>
                 </div>
-              ))}
-            </div>
-          </section>
 
-          <div className="flex flex-wrap gap-3 mb-8">
-            <button type="button" onClick={createPlanner} disabled={loadingAI || savingPlan || deletingPlan} className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-500 px-8 py-3 rounded-xl font-semibold">
-              {loadingAI ? "AI is creating your plan..." : savingPlan ? "Saving plan..." : mode === "normal" ? "Create my planner" : mode === "ai" ? "Generate with AI" : "Generate AI + editable plan"}
-            </button>
-            {planId && <button type="button" onClick={deletePlan} disabled={deletingPlan || loadingAI || savingPlan} className="bg-rose-950/40 border border-rose-800 text-rose-300 px-6 py-3 rounded-xl font-semibold">{deletingPlan ? "Deleting..." : "Delete plan"}</button>}
-          </div>
-
-          {(mode === "ai" || mode === "both") && (
-            <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
-              <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Sora', sans-serif" }}>AI study plan</h2>
-              <p className="text-slate-400 text-sm mb-6">Personalized for your preparation</p>
-
-              {aiPlan ? (
-                <div className="space-y-6">
-                  {aiPlan.overview && <div className="bg-[#0B0E14] border border-slate-800 rounded-xl p-5"><h3 className="text-lg font-bold mb-2">Strategy</h3><MathText text={aiPlan.overview} /></div>}
-
-                  {totalTasks > 0 && <div className="bg-[#0B0E14] border border-slate-800 rounded-xl p-5"><div className="flex justify-between mb-3"><span className="font-semibold">Plan progress</span><span className="text-indigo-400 font-bold">{progress}%</span></div><div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} /></div><p className="text-sm text-slate-400 mt-2">{completedTasks} of {totalTasks} tasks completed</p></div>}
-
-                  {Array.isArray(aiPlan.phases) && aiPlan.phases.length > 0 && <div><h3 className="text-xl font-bold mb-4">Preparation phases</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{aiPlan.phases.map((phase, index) => <div key={index} className="bg-[#0B0E14] border border-slate-800 p-5 rounded-xl"><h4 className="font-bold text-lg"><MathText text={phase.name} /></h4><p className="text-sm text-slate-400 mt-1">Day {phase.start_day} → Day {phase.end_day}</p><div className="text-slate-300 mt-3"><MathText text={phase.goal} /></div></div>)}</div></div>}
-
-                  {Array.isArray(aiPlan.daily_plan) && aiPlan.daily_plan.length > 0 && <div><h3 className="text-xl font-bold mb-4">Daily plan</h3><div className="space-y-4">{aiPlan.daily_plan.map((day, dayIndex) => <div key={day.day ?? day.date ?? dayIndex} className="bg-[#0B0E14] border border-slate-800 rounded-xl p-5"><div className="mb-4"><h4 className="text-lg font-bold">Day {day.day}</h4><p className="text-sm text-slate-400">{day.date}</p></div><div className="space-y-3">{(day.tasks || []).map((task, taskIndex) => { const taskKey = task.id || `${day.day}-${taskIndex}`; const completed = Boolean(task.completed); return <div key={taskKey} className={`flex items-start gap-4 p-4 rounded-xl ${completed ? "bg-emerald-950/30 border border-emerald-800" : "bg-[#151922] border border-slate-800"}`}><input type="checkbox" checked={completed} onChange={() => toggleTask(task.id)} disabled={!task.id} className="mt-1 w-5 h-5 cursor-pointer accent-indigo-600" /><div className="flex-1"><div className="flex flex-wrap justify-between gap-2"><div className={`font-semibold ${completed ? "line-through text-slate-500" : ""}`}><MathText text={`${task.subject || ""} — ${task.topic || ""}`} /></div><span className="text-indigo-400 text-sm">{task.hours}h</span></div>{task.activity && <div className="text-sm text-slate-400 mt-1"><MathText text={task.activity} /></div>}</div></div>; })}</div></div>)}</div></div>}
-                </div>
-              ) : <div className="text-slate-500 text-center py-8">Fill in your study information and generate your plan.</div>}
-            </section>
-          )}
-
-          {(mode === "normal" || mode === "both") && planCreated && (
-            <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
-              <h2 className="text-xl font-bold mb-6">Add study task</h2>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input value={taskText} onChange={(e) => setTaskText(e.target.value)} placeholder="Topic / task" className="p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none" />
-                <select value={taskSubject} onChange={(e) => setTaskSubject(e.target.value)} className="p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none">{subjects.map((subject) => <option key={subject.name}>{subject.name}</option>)}</select>
-                <input type="date" value={taskDate} min={todayISO} onChange={(e) => setTaskDate(e.target.value)} className="p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none" />
-                <input type="number" min="0.5" max="24" step="0.5" value={taskHours} onChange={(e) => setTaskHours(e.target.value)} placeholder="Hours" className="p-3 rounded-xl bg-[#0B0E14] border border-slate-800 outline-none" />
+                <button
+                  onClick={addSubject}
+                  className="text-sm px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700"
+                >
+                  + Add Subject
+                </button>
               </div>
-              <button type="button" onClick={addTask} disabled={addingTask} className="mt-5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 px-6 py-3 rounded-xl font-semibold">{addingTask ? "Adding..." : "Add task"}</button>
-            </section>
-          )}
 
-          {tasks.length > 0 && (
-            <section className="bg-[#151922] border border-slate-800 rounded-2xl p-6 md:p-8 mb-8">
-              <div className="flex justify-between items-center mb-3"><h2 className="text-xl font-bold">Your tasks</h2><span className="text-indigo-400 font-bold">{progress}%</span></div>
-              <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden mb-6"><div className="h-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} /></div>
               <div className="space-y-3">
-                {tasks.map((task) => <div key={task.id} className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border ${task.completed ? "bg-emerald-950/30 border-emerald-800" : "bg-[#0B0E14] border-slate-800"}`}><div className="flex items-start gap-3"><input type="checkbox" checked={task.completed} onChange={() => toggleTask(task.id)} className="mt-1 w-5 h-5 cursor-pointer accent-indigo-600" /><div><div className={`font-semibold ${task.completed ? "line-through text-slate-500" : ""}`}><MathText text={task.text} /></div><p className="text-sm text-slate-400 mt-1">{task.subject} • {task.date} • {task.hours}h</p>{task.activity && <p className="text-xs text-slate-500 mt-1">{task.activity}</p>}</div></div><div className="flex gap-2"><button type="button" onClick={() => toggleTask(task.id)} className="px-4 py-2 rounded-lg bg-indigo-600">{task.completed ? "Undo" : "Complete"}</button><button type="button" onClick={() => deleteTask(task.id)} className="px-4 py-2 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300">Delete</button></div></div>)}
+                {subjects.map(
+                  (subject, index) => (
+                    <div
+                      key={`${subject.name}-${index}`}
+                      className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3"
+                    >
+
+                      <select
+                        value={subject.name}
+                        onChange={(e) =>
+                          updateSubject(
+                            index,
+                            "name",
+                            e.target.value
+                          )
+                        }
+                        className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-3"
+                      >
+                        {SUBJECTS.map(
+                          (item) => (
+                            <option
+                              key={item}
+                              value={item}
+                            >
+                              {item}
+                            </option>
+                          )
+                        )}
+                      </select>
+
+                      <select
+                        value={subject.strength}
+                        onChange={(e) =>
+                          updateSubject(
+                            index,
+                            "strength",
+                            e.target.value
+                          )
+                        }
+                        className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-3"
+                      >
+                        <option value="Weak">
+                          🔴 Weak
+                        </option>
+
+                        <option value="Medium">
+                          🟡 Medium
+                        </option>
+
+                        <option value="Strong">
+                          🟢 Strong
+                        </option>
+                      </select>
+
+                      <button
+                        onClick={() =>
+                          removeSubject(index)
+                        }
+                        disabled={
+                          subjects.length <= 1
+                        }
+                        className="px-4 py-3 rounded-lg bg-red-500/10 text-red-300 hover:bg-red-500/20 disabled:opacity-30"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )
+                )}
               </div>
+            </div>
+
+            {/* GENERATE */}
+
+            {mode === "ai" && (
+              <button
+                onClick={generateAIPlan}
+                disabled={
+                  generating ||
+                  saving ||
+                  !examDate
+                }
+                className="mt-7 w-full md:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generating
+                  ? "Generating..."
+                  : saving
+                  ? "Saving..."
+                  : "Generate AI Study Plan"}
+              </button>
+            )}
+          </section>
+
+          {/* MANUAL TASK */}
+
+          {mode === "manual" && (
+            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-7 mb-8">
+
+              <h2 className="text-xl font-bold mb-1">
+                Add Manual Task
+              </h2>
+
+              <p className="text-slate-400 text-sm mb-6">
+                Add your own study task to the current
+                plan.
+              </p>
+
+              {!aiPlan && (
+                <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 mb-5">
+                  Generate an AI plan first. Manual
+                  tasks are attached to the current
+                  saved plan.
+                </div>
+              )}
+
+              <form
+                onSubmit={addTask}
+                className="grid grid-cols-1 md:grid-cols-4 gap-4"
+              >
+
+                <input
+                  value={manualText}
+                  onChange={(e) =>
+                    setManualText(e.target.value)
+                  }
+                  placeholder="e.g. Revise trigonometric identities"
+                  className="md:col-span-2 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3"
+                />
+
+                <select
+                  value={manualSubject}
+                  onChange={(e) =>
+                    setManualSubject(e.target.value)
+                  }
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-3"
+                >
+                  {SUBJECTS.map((item) => (
+                    <option
+                      key={item}
+                      value={item}
+                    >
+                      {item}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  type="date"
+                  value={manualDate}
+                  min={getLocalISODate()}
+                  onChange={(e) =>
+                    setManualDate(e.target.value)
+                  }
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-3"
+                />
+
+                <input
+                  type="number"
+                  min="0.5"
+                  max="24"
+                  step="0.5"
+                  value={manualHours}
+                  onChange={(e) =>
+                    setManualHours(e.target.value)
+                  }
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-3"
+                />
+
+                <button
+                  type="submit"
+                  disabled={
+                    addingTask || !aiPlan
+                  }
+                  className="md:col-span-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg px-5 py-3 font-semibold disabled:opacity-50"
+                >
+                  {addingTask
+                    ? "Adding..."
+                    : "Add Task"}
+                </button>
+              </form>
             </section>
           )}
 
-          {!planCreated && <div className="text-center text-slate-500 py-10"><div className="text-5xl mb-4">📚</div><h3 className="text-xl font-semibold text-slate-300">Your study journey starts here</h3><p className="mt-2">Select your exam, set your target date, choose your study hours and create your plan.</p></div>}
+          {/* NO PLAN */}
+
+          {!aiPlan && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
+
+              <div className="text-5xl mb-4">
+                📚
+              </div>
+
+              <h2 className="text-2xl font-bold mb-2">
+                No study plan yet
+              </h2>
+
+              <p className="text-slate-400 max-w-lg mx-auto">
+                Select your exam, exam date, subjects
+                and daily study hours above, then generate
+                your personalized ExamAce AI study plan.
+              </p>
+            </div>
+          )}
+
+          {/* PLAN */}
+
+          {aiPlan && (
+            <>
+              {/* STATISTICS */}
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <p className="text-slate-400 text-sm">
+                    Tasks
+                  </p>
+
+                  <p className="text-2xl font-bold mt-1">
+                    {statistics.completedTasks}/
+                    {statistics.totalTasks}
+                  </p>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <p className="text-slate-400 text-sm">
+                    Study Hours
+                  </p>
+
+                  <p className="text-2xl font-bold mt-1">
+                    {statistics.completedHours.toFixed(
+                      1
+                    )}
+                    /
+                    {statistics.totalHours.toFixed(
+                      1
+                    )}
+                  </p>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <p className="text-slate-400 text-sm">
+                    Progress
+                  </p>
+
+                  <p className="text-2xl font-bold mt-1">
+                    {statistics.progress}%
+                  </p>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <p className="text-slate-400 text-sm">
+                    Days Left
+                  </p>
+
+                  <p className="text-2xl font-bold mt-1">
+                    {daysRemaining > 0
+                      ? daysRemaining
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* PROGRESS BAR */}
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8">
+
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-slate-300">
+                    Overall Progress
+                  </span>
+
+                  <span className="text-blue-400">
+                    {statistics.progress}%
+                  </span>
+                </div>
+
+                <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-500"
+                    style={{
+                      width: `${statistics.progress}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* OVERVIEW */}
+
+              {aiPlan.overview && (
+                <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-7 mb-8">
+
+                  <h2 className="text-xl font-bold mb-4">
+                    Plan Overview
+                  </h2>
+
+                  <div className="text-slate-300 leading-7">
+                    <MathText
+                      text={aiPlan.overview}
+                    />
+                  </div>
+                </section>
+              )}
+
+              {/* PHASES */}
+
+              {Array.isArray(aiPlan.phases) &&
+                aiPlan.phases.length > 0 && (
+                  <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-7 mb-8">
+
+                    <h2 className="text-xl font-bold mb-5">
+                      Preparation Phases
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                      {aiPlan.phases.map(
+                        (phase, index) => (
+                          <div
+                            key={index}
+                            className="bg-slate-800/60 border border-slate-700 rounded-xl p-5"
+                          >
+                            <div className="text-blue-400 text-sm font-semibold mb-2">
+                              Phase{" "}
+                              {phase.phase ??
+                                index + 1}
+                            </div>
+
+                            <h3 className="font-bold text-lg mb-2">
+                              <MathText
+                                text={
+                                  phase.name ||
+                                  phase.title ||
+                                  ""
+                                }
+                              />
+                            </h3>
+
+                            {(phase.goal ||
+                              phase.description) && (
+                              <div className="text-slate-400 text-sm leading-6">
+                                <MathText
+                                  text={
+                                    phase.goal ||
+                                    phase.description
+                                  }
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </section>
+                )}
+
+              {/* DAILY PLAN */}
+
+              <section>
+
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-2xl font-bold">
+                    Daily Study Plan
+                  </h2>
+
+                  {planId && (
+                    <span className="text-xs text-slate-500">
+                      Saved Plan #{planId}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-5">
+
+                  {aiPlan.daily_plan.map(
+                    (day, dayIndex) => (
+                      <div
+                        key={`${day.day}-${day.date}-${dayIndex}`}
+                        className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden"
+                      >
+
+                        {/* DAY HEADER */}
+
+                        <div className="bg-slate-800/70 px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+
+                          <div>
+                            <h3 className="font-bold text-lg">
+                              Day {day.day}
+                            </h3>
+
+                            {day.date && (
+                              <p className="text-slate-400 text-sm">
+                                {day.date}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="text-sm text-slate-400">
+                            {day.tasks?.length || 0}{" "}
+                            tasks
+                          </div>
+                        </div>
+
+                        {/* TASKS */}
+
+                        <div className="p-4 md:p-5 space-y-3">
+
+                          {day.tasks?.length ===
+                            0 && (
+                            <p className="text-slate-500 text-sm">
+                              No tasks for this day.
+                            </p>
+                          )}
+
+                          {day.tasks?.map(
+                            (task, taskIndex) => (
+                              <div
+                                key={
+                                  task.id ??
+                                  `${dayIndex}-${taskIndex}`
+                                }
+                                className={`border rounded-xl p-4 transition ${
+                                  task.completed
+                                    ? "border-emerald-500/20 bg-emerald-500/5"
+                                    : "border-slate-700 bg-slate-800/30"
+                                }`}
+                              >
+
+                                <div className="flex items-start gap-3">
+
+                                  <button
+                                    onClick={() =>
+                                      toggleTask(
+                                        task.id
+                                      )
+                                    }
+                                    disabled={
+                                      !task.id
+                                    }
+                                    className={`mt-1 w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0 ${
+                                      task.completed
+                                        ? "bg-emerald-600 border-emerald-500"
+                                        : "border-slate-600 hover:border-blue-500"
+                                    }`}
+                                  >
+                                    {task.completed &&
+                                      "✓"}
+                                  </button>
+
+                                  <div className="flex-1 min-w-0">
+
+                                    <div className="flex flex-wrap gap-2 mb-2">
+
+                                      {task.subject && (
+                                        <span className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-300 text-xs">
+                                          <MathText
+                                            text={
+                                              task.subject
+                                            }
+                                          />
+                                        </span>
+                                      )}
+
+                                      {task.hours > 0 && (
+                                        <span className="px-2 py-1 rounded-md bg-slate-800 text-slate-400 text-xs">
+                                          {task.hours}{" "}
+                                          hr
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {task.topic && (
+                                      <h4
+                                        className={`font-semibold ${
+                                          task.completed
+                                            ? "text-slate-500 line-through"
+                                            : "text-white"
+                                        }`}
+                                      >
+                                        <MathText
+                                          text={
+                                            task.topic
+                                          }
+                                        />
+                                      </h4>
+                                    )}
+
+                                    {task.activity && (
+                                      <div className="text-slate-400 text-sm mt-2 leading-6">
+                                        <MathText
+                                          text={
+                                            task.activity
+                                          }
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {task.id && (
+                                    <button
+                                      onClick={() =>
+                                        deleteTask(
+                                          task.id
+                                        )
+                                      }
+                                      disabled={
+                                        deletingTask ===
+                                        task.id
+                                      }
+                                      className="text-slate-500 hover:text-red-400 text-sm"
+                                    >
+                                      {deletingTask ===
+                                      task.id
+                                        ? "..."
+                                        : "Delete"}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              </section>
+            </>
+          )}
         </div>
       </main>
     </div>
