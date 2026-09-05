@@ -6,7 +6,7 @@ from auth import (
     decode_access_token,
 )
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import random
 import json
@@ -18,7 +18,8 @@ from fastapi import (
     FastAPI,
     Depends,
     Header,
-    HTTPException
+    HTTPException,
+    Request,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -33,6 +34,18 @@ from subscription_service import (
     record_ai_usage,
     reserve_quota,
     release_quota,
+)
+
+from payment import (
+    RazorpaySubscription,
+    RAZORPAY_KEY_ID,
+    RAZORPAY_PLAN_ID,
+    create_razorpay_subscription,
+    fetch_razorpay_subscription,
+    cancel_razorpay_subscription,
+    verify_checkout_signature,
+    verify_webhook_signature,
+    unix_to_datetime,
 )
 
 from schemas import UserCreate, UserLogin, NoteCreate
@@ -489,10 +502,6 @@ def generate_plan(
 
 # ============================================================
 # SAVE STUDY PLAN
-#
-# Builds the individual StudyTask rows from plan_data.daily_plan
-# server-side. The frontend must NOT duplicate this task-creation
-# logic.
 # ============================================================
 
 @app.post("/save-plan")
@@ -502,10 +511,6 @@ def save_plan(
     current_user: User = Depends(get_current_user)
 ):
     try:
-        # --------------------------------------------------------
-        # DELETE PREVIOUS PLANS
-        # --------------------------------------------------------
-
         old_plans = (
             db.query(StudyPlan)
             .filter(StudyPlan.user_id == current_user.id)
@@ -521,10 +526,6 @@ def save_plan(
 
         db.commit()
 
-        # --------------------------------------------------------
-        # CREATE NEW PLAN
-        # --------------------------------------------------------
-
         new_plan = StudyPlan(
             user_id=current_user.id,
             exam=data.exam,
@@ -539,10 +540,6 @@ def save_plan(
         db.add(new_plan)
         db.commit()
         db.refresh(new_plan)
-
-        # --------------------------------------------------------
-        # CREATE TASKS
-        # --------------------------------------------------------
 
         daily_plan = data.plan_data.get("daily_plan", [])
 
@@ -592,9 +589,6 @@ def save_plan(
 
 # ============================================================
 # GET SAVED PLAN
-#
-# Rebuilds daily_plan from the database so the frontend gets
-# real task IDs and completion state back.
 # ============================================================
 
 @app.get("/my-plan")
@@ -664,9 +658,6 @@ def get_my_plan(
 
 # ============================================================
 # ADD MANUAL STUDY TASK
-#
-# Kept separate from AI-plan creation. Matches Planner.jsx,
-# which sends { text, subject, date, hours }.
 # ============================================================
 
 @app.post("/study-task")
@@ -866,9 +857,6 @@ def generate_quiz(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Temporary quiz implementation.
-    # It is authenticated but does not consume AI quota because it
-    # currently does not call Gemini.
     questions = []
 
     for i in range(data.count):
@@ -1004,10 +992,6 @@ def usage_info(
 
 # ============================================================
 # REGISTER
-#
-# User + subscription creation is transactional. If subscription
-# creation fails, the user creation is rolled back too, so we
-# never end up with a user and no subscription.
 # ============================================================
 
 @app.post("/register")
@@ -1046,7 +1030,7 @@ def register(
         )
 
         db.add(new_user)
-        db.flush()  # assigns new_user.id without committing yet
+        db.flush()
 
         subscription = Subscription(
             user_id=new_user.id,
@@ -1083,9 +1067,6 @@ def register(
 
 # ============================================================
 # VERIFY OTP
-#
-# Incorrect attempts increment user.otp_attempts, so the
-# 5-attempt lockout actually works.
 # ============================================================
 
 @app.post("/verify-otp")
@@ -1148,10 +1129,6 @@ def verify_otp(
 
 # ============================================================
 # RESEND OTP
-#
-# The hourly resend limit is checked BEFORE a new OTP is
-# generated/saved/sent, and otp_resend_count is incremented on
-# every successful resend. Resending also resets otp_attempts.
 # ============================================================
 
 @app.post("/resend-otp")
@@ -1178,10 +1155,6 @@ def resend_otp(
 
     now = datetime.utcnow()
 
-    # --------------------------------------------------------
-    # Cooldown check (60s between resends)
-    # --------------------------------------------------------
-
     if user.otp_last_sent_at:
         elapsed = (now - user.otp_last_sent_at).total_seconds()
 
@@ -1193,10 +1166,6 @@ def resend_otp(
                 detail=f"Please wait {remaining} seconds before requesting another code."
             )
 
-    # --------------------------------------------------------
-    # Reset the hourly window if it has expired
-    # --------------------------------------------------------
-
     if (
         not user.otp_window_started_at
         or (now - user.otp_window_started_at).total_seconds() >= 3600
@@ -1204,19 +1173,11 @@ def resend_otp(
         user.otp_window_started_at = now
         user.otp_resend_count = 0
 
-    # --------------------------------------------------------
-    # Enforce the hourly limit BEFORE generating a new OTP
-    # --------------------------------------------------------
-
     if user.otp_resend_count >= OTP_MAX_RESENDS_PER_HOUR:
         raise HTTPException(
             status_code=429,
             detail="Too many verification codes requested. Please try again later."
         )
-
-    # --------------------------------------------------------
-    # Generate and save the new OTP
-    # --------------------------------------------------------
 
     otp_code = f"{secrets.randbelow(1_000_000):06d}"
 
@@ -1263,7 +1224,6 @@ def login(
             detail="Invalid credentials"
         )
 
-    # Automatically upgrade old SHA-256 passwords to bcrypt.
     if is_legacy_password_hash(db_user.password):
         db_user.password = hash_password(user.password)
         db.commit()
@@ -1284,3 +1244,359 @@ def login(
         "user_id": db_user.id,
         "name": db_user.name
     }
+
+
+# ============================================================
+# RAZORPAY PRO SUBSCRIPTION
+# ============================================================
+
+@app.post("/payments/create-pro-subscription")
+def create_pro_subscription(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not RAZORPAY_KEY_ID or not RAZORPAY_PLAN_ID:
+        raise HTTPException(
+            status_code=503,
+            detail="Razorpay is not configured yet."
+        )
+
+    current_plan = get_user_plan(db, current_user.id)
+
+    if current_plan == "pro":
+        raise HTTPException(
+            status_code=400,
+            detail="You already have an active Pro subscription."
+        )
+
+    existing = (
+        db.query(RazorpaySubscription)
+        .filter(
+            RazorpaySubscription.user_id == current_user.id,
+            RazorpaySubscription.status.in_(["created", "authenticated", "active"]),
+        )
+        .order_by(RazorpaySubscription.id.desc())
+        .first()
+    )
+
+    if existing and existing.status in ["created", "authenticated"]:
+        return {
+            "key_id": RAZORPAY_KEY_ID,
+            "subscription_id": existing.razorpay_subscription_id,
+            "status": existing.status,
+        }
+
+    try:
+        razorpay_data = create_razorpay_subscription(
+            user_id=current_user.id,
+            email=current_user.email,
+            name=current_user.name,
+        )
+
+        subscription_id = razorpay_data.get("id")
+
+        if not subscription_id:
+            raise RuntimeError("Razorpay did not return a subscription ID.")
+
+        record = RazorpaySubscription(
+            user_id=current_user.id,
+            razorpay_subscription_id=subscription_id,
+            razorpay_plan_id=razorpay_data.get("plan_id", RAZORPAY_PLAN_ID),
+            status=razorpay_data.get("status", "created"),
+            current_end=unix_to_datetime(razorpay_data.get("current_end")),
+        )
+
+        db.add(record)
+        db.commit()
+
+        return {
+            "key_id": RAZORPAY_KEY_ID,
+            "subscription_id": subscription_id,
+            "status": record.status,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        db.rollback()
+        print("Razorpay subscription creation error:", error)
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to create Pro subscription. Please try again."
+        )
+
+
+class VerifyProPaymentRequest(BaseModel):
+    razorpay_payment_id: str
+    razorpay_subscription_id: str
+    razorpay_signature: str
+
+
+@app.post("/payments/verify-pro-payment")
+def verify_pro_payment(
+    data: VerifyProPaymentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    record = (
+        db.query(RazorpaySubscription)
+        .filter(
+            RazorpaySubscription.razorpay_subscription_id == data.razorpay_subscription_id,
+            RazorpaySubscription.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not record:
+        raise HTTPException(
+            status_code=404,
+            detail="Subscription record not found."
+        )
+
+    if not verify_checkout_signature(
+        payment_id=data.razorpay_payment_id,
+        subscription_id=data.razorpay_subscription_id,
+        signature=data.razorpay_signature,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid payment signature."
+        )
+
+    try:
+        razorpay_data = fetch_razorpay_subscription(
+            data.razorpay_subscription_id
+        )
+    except Exception as error:
+        print("Razorpay verification fetch error:", error)
+        raise HTTPException(
+            status_code=502,
+            detail="Payment was verified, but subscription status could not be confirmed yet."
+        )
+
+    status = razorpay_data.get("status", "authenticated")
+    current_end = unix_to_datetime(razorpay_data.get("current_end"))
+
+    record.razorpay_payment_id = data.razorpay_payment_id
+    record.status = status
+    record.current_end = current_end
+
+    if status in ["authenticated", "active"]:
+        # Keep access active through the current Razorpay billing period.
+        # If current_end is not returned yet, use a short provisional period;
+        # the webhook will replace it with Razorpay's authoritative current_end.
+        expires_at = current_end or (datetime.now(timezone.utc) + timedelta(days=31))
+
+        subscription = (
+            db.query(Subscription)
+            .filter(Subscription.user_id == current_user.id)
+            .first()
+        )
+
+        if not subscription:
+            subscription = Subscription(
+                user_id=current_user.id,
+                plan="free",
+                status="active",
+            )
+            db.add(subscription)
+
+        subscription.plan = "pro"
+        subscription.status = "active"
+        subscription.started_at = datetime.now(timezone.utc)
+        subscription.expires_at = expires_at
+
+    db.commit()
+
+    return {
+        "message": "Pro subscription activated successfully.",
+        "plan": "pro" if status in ["authenticated", "active"] else "free",
+        "status": status,
+        "expires_at": current_end,
+    }
+
+
+@app.post("/payments/cancel-pro-subscription")
+def cancel_pro_subscription(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    record = (
+        db.query(RazorpaySubscription)
+        .filter(
+            RazorpaySubscription.user_id == current_user.id,
+            RazorpaySubscription.status.in_(["authenticated", "active"]),
+        )
+        .order_by(RazorpaySubscription.id.desc())
+        .first()
+    )
+
+    if not record:
+        raise HTTPException(
+            status_code=404,
+            detail="No active Razorpay subscription found."
+        )
+
+    try:
+        razorpay_data = cancel_razorpay_subscription(
+            record.razorpay_subscription_id,
+            at_cycle_end=True,
+        )
+
+        record.status = razorpay_data.get("status", record.status)
+        record.current_end = unix_to_datetime(razorpay_data.get("current_end")) or record.current_end
+
+        local_subscription = (
+            db.query(Subscription)
+            .filter(Subscription.user_id == current_user.id)
+            .first()
+        )
+
+        # Keep Pro active until the already-paid billing cycle ends.
+        if local_subscription and record.current_end:
+            local_subscription.plan = "pro"
+            local_subscription.status = "active"
+            local_subscription.expires_at = record.current_end
+
+        db.commit()
+
+        return {
+            "message": "Pro cancellation scheduled for the end of the current billing cycle.",
+            "expires_at": record.current_end,
+        }
+
+    except Exception as error:
+        db.rollback()
+        print("Razorpay cancellation error:", error)
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to cancel the Pro subscription right now."
+        )
+
+
+# ============================================================
+# RAZORPAY WEBHOOK
+# ============================================================
+
+@app.post("/payments/razorpay-webhook")
+async def razorpay_webhook(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    raw_body = await request.body()
+    signature = request.headers.get("X-Razorpay-Signature")
+
+    if not signature:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing webhook signature."
+        )
+
+    try:
+        valid = verify_webhook_signature(raw_body, signature)
+    except RuntimeError as error:
+        print("Webhook configuration error:", error)
+        raise HTTPException(
+            status_code=503,
+            detail="Webhook is not configured."
+        )
+
+    if not valid:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid webhook signature."
+        )
+
+    try:
+        payload = json.loads(raw_body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid webhook payload."
+        )
+
+    event = payload.get("event", "")
+    subscription_entity = (
+        payload.get("payload", {})
+        .get("subscription", {})
+        .get("entity", {})
+    )
+
+    subscription_id = subscription_entity.get("id")
+
+    if not subscription_id:
+        return {"received": True}
+
+    record = (
+        db.query(RazorpaySubscription)
+        .filter(RazorpaySubscription.razorpay_subscription_id == subscription_id)
+        .first()
+    )
+
+    if not record:
+        # Unknown subscriptions are acknowledged after signature validation.
+        return {"received": True}
+
+    status = subscription_entity.get("status", record.status)
+    current_end = unix_to_datetime(subscription_entity.get("current_end"))
+
+    payment_entity = (
+        payload.get("payload", {})
+        .get("payment", {})
+        .get("entity", {})
+    )
+
+    if payment_entity.get("id"):
+        record.razorpay_payment_id = payment_entity["id"]
+
+    record.status = status
+    if current_end:
+        record.current_end = current_end
+
+    local_subscription = (
+        db.query(Subscription)
+        .filter(Subscription.user_id == record.user_id)
+        .first()
+    )
+
+    if not local_subscription:
+        local_subscription = Subscription(
+            user_id=record.user_id,
+            plan="free",
+            status="active",
+        )
+        db.add(local_subscription)
+
+    # Successful authentication/charge/activation keeps Pro enabled.
+    if event in [
+        "subscription.authenticated",
+        "subscription.activated",
+        "subscription.charged",
+        "subscription.resumed",
+    ] or status == "active":
+        local_subscription.plan = "pro"
+        local_subscription.status = "active"
+        local_subscription.expires_at = record.current_end or local_subscription.expires_at
+
+    # For failed/cancelled subscriptions, do not revoke already-paid access
+    # immediately. The normal quota service will fall back to Free after
+    # expires_at has passed.
+    elif event in [
+        "subscription.pending",
+        "subscription.halted",
+        "subscription.cancelled",
+        "subscription.completed",
+        "subscription.paused",
+    ]:
+        if record.current_end:
+            local_subscription.plan = "pro"
+            local_subscription.status = "active"
+            local_subscription.expires_at = record.current_end
+        elif event in ["subscription.completed", "subscription.cancelled"]:
+            local_subscription.plan = "free"
+            local_subscription.status = "active"
+            local_subscription.expires_at = None
+
+    db.commit()
+
+    return {"received": True}
