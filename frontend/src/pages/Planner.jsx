@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
 
-const API_URL = "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const MODES = [
   {
